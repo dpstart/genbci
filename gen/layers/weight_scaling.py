@@ -2,7 +2,7 @@
 import torch
 from torch import nn
 import numpy as np
-from eeggan.modules.layers.multiconv import MultiConv1d
+from gen.layers.multiconv import MultiConv1d
 from torch.autograd import Variable
 import torch.nn.functional as F
 

@@ -1,13 +1,13 @@
-#%load_ext autoreload
-#%autoreload 2
 import os
 import joblib
 import sys
 
+sys.path.append("/home/dpaliotta/eegsourcegen/")
+
 
 from braindecode.datautil.iterators import get_balanced_batches
-from eeggan.examples.conv_lin.model import Generator,Discriminator
-from eeggan.util import weight_filler
+from gen.model import Generator,Discriminator
+from gen.util import *
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
@@ -31,23 +31,9 @@ n_blocks = 6
 rampup = 2000.
 block_epochs = [2000,4000,4000,4000,4000,4000]
 
-subj_ind = int(os.getenv('SLURM_ARRAY_TASK_ID','0'))
 task_ind = 0#subj_ind
 #subj_ind = 9
-subj_names = ['BhNoMoSc1',
-             'FaMaMoSc1',
-             'FrThMoSc1',
-             'GuJoMoSc01',
-             'KaUsMoSc1',
-             'LaKaMoSc1',
-             'LuFiMoSc3',
-             'MaJaMoSc1',
-             'MaKiMoSC01',
-             'MaVoMoSc1',
-             'PiWiMoSc1',
-             'RoBeMoSc03',
-             'RoScMoSc1',
-             'StHeMoSc01']
+subj_names = list(range(1,10))
 
 np.random.seed(task_ind)
 torch.manual_seed(task_ind)
@@ -55,22 +41,25 @@ torch.cuda.manual_seed_all(task_ind)
 random.seed(task_ind)
 rng = np.random.RandomState(task_ind)
 
-data = os.path.join('/data/schirrmr/hartmank/data/GAN/cnt',subj_names[subj_ind]+'_FCC4h.cnt')
-EEG_data = joblib.load(data)
-train_set = EEG_data['train_set']
-test_set = EEG_data['test_set']
-train = np.concatenate((train_set.X,test_set.X))
-target = np.concatenate((train_set.y,test_set.y))
+data, labels = get_data(1, True, '/home/dpaliotta/eegsourcegen/data/')
 
-train = train[:,:,:,None]
-train = train-train.mean()
-train = train/train.std()
-train = train/np.abs(train).max()
-target_onehot = np.zeros((target.shape[0],2))
-target_onehot[:,target] = 1
+# data = os.path.join('/data/schirrmr/hartmank/data/GAN/cnt',subj_names[subj_ind]+'_FCC4h.cnt')
+# EEG_data = joblib.load(data)
+# train_set = EEG_data['train_set']
+# test_set = EEG_data['test_set']
+# train = np.concatenate((train_set.X,test_set.X))
+# target = np.concatenate((train_set.y,test_set.y))
+
+# train = train[:,:,:,None]
+# train = train-train.mean()
+# train = train/train.std()
+# train = train/np.abs(train).max()
+# target_onehot = np.zeros((target.shape[0],2))
+# target_onehot[:,target] = 1
 
 
-modelpath = '/data/schirrmr/hartmank/data/GAN/models/GAN_debug/%s/'%('PAPERFIN4_'+subj_names[subj_ind]+'_FFC4h_WGAN_adaptlambclamp_CONV_LIN_10l_run%d'%task_ind)
+
+modelpath = 'models/'
 modelname = 'Progressive%s'
 if not os.path.exists(modelpath):
     os.makedirs(modelpath)
