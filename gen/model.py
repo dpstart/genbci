@@ -64,7 +64,7 @@ def create_disc_blocks(n_chans):
                                 nn.Sequential(StdMap1d(),
                                             create_conv_sequence(51,50),
                                             Reshape([[0],-1]),
-                                            weight_scale(nn.Linear(50*12,1),
+                                            weight_scale(nn.Linear(50*27,1),
                                                             gain=calculate_gain('linear'))),
                                 create_in_sequence(n_chans,50),
                                 None
@@ -93,7 +93,7 @@ def create_gen_blocks(n_chans,z_vars):
         return nn.Upsample(mode='bilinear',scale_factor=(2,1))
     blocks = []
     tmp_block = ProgressiveGeneratorBlock(
-                                nn.Sequential(weight_scale(nn.Linear(z_vars,50*12),
+                                nn.Sequential(weight_scale(nn.Linear(z_vars,50*27),
                                                         gain=calculate_gain('leaky_relu')),
                                                 nn.LeakyReLU(0.2),
                                                 Reshape([[0],50,-1]),

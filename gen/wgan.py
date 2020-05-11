@@ -215,7 +215,7 @@ class WGAN_I_Discriminator(GAN_Discriminator):
         """
         self.pre_train()
 
-        one = torch.FloatTensor([1])
+        one = torch.tensor(1, dtype=torch.float)
         mone = one * -1
 
         batch_real,one,mone = cuda_check([batch_real,one,mone])
@@ -240,7 +240,7 @@ class WGAN_I_Discriminator(GAN_Discriminator):
             tmp_center = (loss_real+loss_fake)
             tmp_center = self.eps_center*tmp_center**2
             tmp_center.backward()
-            loss_center = tmp_center.data[0]
+            loss_center = tmp_center.item()
 
         #loss_consistency_term
         #if self.lambd_consistency_term>0:
@@ -257,9 +257,9 @@ class WGAN_I_Discriminator(GAN_Discriminator):
         # Update parameters
         self.update_parameters()
 
-        loss_real = -loss_real.data[0]
-        loss_fake = loss_fake.data[0]
-        loss_penalty = loss_penalty.data[0]
+        loss_real = -loss_real.item()
+        loss_fake = loss_fake.item()
+        loss_penalty = loss_penalty.item()
         return loss_real,loss_fake,loss_penalty,loss_drift,loss_center # return loss
 
 
@@ -345,7 +345,8 @@ class WGAN_I_Generator(GAN_Generator):
         """
         self.pre_train(discriminator)
 
-        mone = torch.FloatTensor([1]) * -1
+        one = torch.tensor(1, dtype=torch.float)
+        mone = one * -1
         batch_noise,mone = cuda_check([batch_noise,mone])
 
         # Generate and discriminate
@@ -358,5 +359,5 @@ class WGAN_I_Generator(GAN_Generator):
         # Update parameters
         self.update_parameters()
 
-        loss = loss.data[0]
+        loss = loss.item()
         return loss # return loss

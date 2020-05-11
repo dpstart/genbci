@@ -1,24 +1,26 @@
 import os
 import joblib
 import sys
+sys.path.append("..")
 
-sys.path.append("/home/dpaliotta/eegsourcegen/")
-
-
-from braindecode.datautil.iterators import get_balanced_batches
-from gen.model import Generator,Discriminator
+from gen.model import Generator, Discriminator
 from gen.util import *
+
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import numpy as np
 import matplotlib.pyplot as plt
 import random
+from braindecode.datautil.iterators import get_balanced_batches
+
 
 plt.switch_backend('agg')
-os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
-torch.backends.cudnn.enabled = True
-torch.backends.cudnn.benchmark = True
+#os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+#torch.backends.cudnn.enabled = True
+#torch.backends.cudnn.benchmark = True
+
+device = 'gpu' if torch.cuda.is_available() else 'cpu'
 
 n_critic = 5
 n_batch = 64
@@ -41,22 +43,26 @@ torch.cuda.manual_seed_all(task_ind)
 random.seed(task_ind)
 rng = np.random.RandomState(task_ind)
 
-data, labels = get_data(1, True, '/home/dpaliotta/eegsourcegen/data/')
+print(os.path.abspath(__file__))
 
-# data = os.path.join('/data/schirrmr/hartmank/data/GAN/cnt',subj_names[subj_ind]+'_FCC4h.cnt')
-# EEG_data = joblib.load(data)
-# train_set = EEG_data['train_set']
-# test_set = EEG_data['test_set']
-# train = np.concatenate((train_set.X,test_set.X))
-# target = np.concatenate((train_set.y,test_set.y))
 
-# train = train[:,:,:,None]
-# train = train-train.mean()
-# train = train/train.std()
-# train = train/np.abs(train).max()
-# target_onehot = np.zeros((target.shape[0],2))
-# target_onehot[:,target] = 1
+train, target = None, None 
+for i in range(1,10):
+    train_tmp, target_tmp = get_data(i, True, os.path.join(os.getcwd(), '../data/'))
+    
+    if train is None:
+        train = train_tmp[:,7:8,:]
+        target = target_tmp
+    else:
+        train = np.concatenate((train, train_tmp[:,7:8,:]))
+        target = np.concatenate((target, target_tmp))
 
+train = train[:,:,:,None]
+train = train-train.mean()
+train = train/train.std()
+train = train/np.abs(train).max()
+target_onehot = np.zeros((target.shape[0],4))
+target_onehot[:,target.astype(int)-1] = 1
 
 
 modelpath = 'models/'
@@ -82,10 +88,11 @@ fade_alpha = 1.
 generator.model.alpha = fade_alpha
 discriminator.model.alpha = fade_alpha
 
-generator = generator.cuda()
-discriminator = discriminator.cuda()
+generator = generator.to(device)
+discriminator = discriminator.to(device)
 generator.train()
 discriminator.train()
+
 
 losses_d = []
 losses_g = []
@@ -95,7 +102,8 @@ z_vars_im = rng.normal(0,1,size=(1000,n_z)).astype(np.float32)
 for i_block in range(i_block_tmp,n_blocks):
     c = 0
 
-    train_tmp = discriminator.model.downsample_to_block(Variable(torch.from_numpy(train).cuda(),volatile=True),discriminator.model.cur_block).data.cpu()
+    with torch.no_grad():
+        train_tmp = discriminator.model.downsample_to_block(Variable(torch.from_numpy(train).float().to(device)),discriminator.model.cur_block).data.cpu()
 
     for i_epoch in range(i_epoch_tmp,block_epochs[i_block]):
         i_epoch_tmp = 0
@@ -111,16 +119,18 @@ for i_block in range(i_block_tmp,n_blocks):
         for it in range(iters):
             for i_critic in range(n_critic):
                 train_batches = train_tmp[batches[it*n_critic+i_critic]]
-                batch_real = Variable(train_batches,requires_grad=True).cuda()
+                batch_real = Variable(train_batches,requires_grad=True).to(device)
 
                 z_vars = rng.normal(0,1,size=(len(batches[it*n_critic+i_critic]),n_z)).astype(np.float32)
-                z_vars = Variable(torch.from_numpy(z_vars),volatile=True).cuda()
-                batch_fake = Variable(generator(z_vars).data,requires_grad=True).cuda()
-
+                
+                with torch.no_grad():
+                    z_vars = Variable(torch.from_numpy(z_vars)).to(device)
+                batch_fake = Variable(generator(z_vars).data,requires_grad=True).to(device)
+                
                 loss_d = discriminator.train_batch(batch_real,batch_fake)
                 assert np.all(np.isfinite(loss_d))
             z_vars = rng.normal(0,1,size=(n_batch,n_z)).astype(np.float32)
-            z_vars = Variable(torch.from_numpy(z_vars),requires_grad=True).cuda()
+            z_vars = Variable(torch.from_numpy(z_vars),requires_grad=True).to(device)
             loss_g = generator.train_batch(z_vars,discriminator)
 
         losses_d.append(loss_d)
@@ -142,7 +152,7 @@ for i_block in range(i_block_tmp,n_blocks):
             train_amps = np.abs(train_fft).mean(axis=3).mean(axis=0).squeeze()
 
 
-            z_vars = Variable(torch.from_numpy(z_vars_im),volatile=True).cuda()
+            z_vars = Variable(torch.from_numpy(z_vars_im),volatile=True).to(device)
             batch_fake = generator(z_vars)
             fake_fft = np.fft.rfft(batch_fake.data.cpu().numpy(),axis=2)
             fake_amps = np.abs(fake_fft).mean(axis=3).mean(axis=0).squeeze()
@@ -150,7 +160,7 @@ for i_block in range(i_block_tmp,n_blocks):
             plt.figure()
             plt.plot(freqs_tmp,np.log(fake_amps),label='Fake')
             plt.plot(freqs_tmp,np.log(train_amps),label='Real')
-            plt.title('Frequency Spektrum')
+            plt.title('Frequency Spectrum')
             plt.xlabel('Hz')
             plt.legend()
             plt.savefig(os.path.join(modelpath,modelname%jobid+'_fft_%d_%d.png'%(i_block,i_epoch)))

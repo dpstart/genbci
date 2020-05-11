@@ -131,6 +131,7 @@ class ProgressiveDiscriminatorBlock(nn.Module):
         self.fade_sequence = fade_sequence
 
     def forward(self,input,first=False):
+        
         if first:
             input = self.in_sequence(input)
         out = self.intermediate_sequence(input)
