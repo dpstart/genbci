@@ -1,9 +1,10 @@
 import os
 import joblib
 import sys
+
 sys.path.append("..")
 
-from gen.model import Generator, Discriminator
+from gen. model import Generator, Discriminator
 from gen.util import *
 
 import torch
