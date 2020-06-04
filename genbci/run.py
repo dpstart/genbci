@@ -2,10 +2,9 @@ import os
 import joblib
 import sys
 
-sys.path.append("..")
 
-from gen. model import Generator, Discriminator
-from gen.util import *
+from genbci.generate.model import Generator, Discriminator
+from genbci.generate.util import *
 
 import torch
 import torch.nn as nn
@@ -13,7 +12,6 @@ from torch.autograd import Variable
 import numpy as np
 import matplotlib.pyplot as plt
 import random
-from braindecode.datautil.iterators import get_balanced_batches
 
 
 plt.switch_backend('agg')

@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from torch import optim
-from util import *
+from genbci.generate.util import *
 import torch.autograd as autograd
 import torch.nn.functional as F
 import numpy as np

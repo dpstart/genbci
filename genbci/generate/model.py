@@ -1,13 +1,13 @@
 # coding=utf-8
 from torch import nn
-from gen.layers.reshape import Reshape,PixelShuffle2d
-from gen.layers.normalization import PixelNorm
-from gen.layers.weight_scaling import weight_scale
-from gen.layers.upsampling import CubicUpsampling1d,CubicUpsampling2d
-from gen.layers.stdmap import StdMap1d
-from gen.progressive import ProgressiveGenerator,ProgressiveGeneratorBlock,\
+from genbci.generate.layers.reshape import Reshape,PixelShuffle2d
+from genbci.generate.layers.normalization import PixelNorm
+from genbci.generate.layers.weight_scaling import weight_scale
+from genbci.generate.layers.upsampling import CubicUpsampling1d,CubicUpsampling2d
+from genbci.generate.layers.stdmap import StdMap1d
+from genbci.generate.progressive import ProgressiveGenerator,ProgressiveGeneratorBlock,\
                             ProgressiveDiscriminator,ProgressiveDiscriminatorBlock
-from gen.wgan import WGAN_I_Generator,WGAN_I_Discriminator
+from genbci.generate.wgan import WGAN_I_Generator,WGAN_I_Discriminator
 from torch.nn.init import calculate_gain
 
 

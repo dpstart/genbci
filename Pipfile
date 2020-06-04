@@ -5,6 +5,7 @@ verify_ssl = true
 
 [dev-packages]
 notebook = "*"
+pipenv-setup = "*"
 
 [packages]
 numpy = "*"
@@ -17,6 +18,7 @@ xarray = "*"
 pylsl = "*"
 torch = "*"
 braindecode = "*"
+genbci = {editable = true, path = "."}
 
 [requires]
 python_version = "3.7"
