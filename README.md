@@ -2,7 +2,9 @@
 
 Install dependencies 
 
-`pipenv sync --dev`
+```
+pipenv sync --dev
+```
 
 Test `pylsl`
 
