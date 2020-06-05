@@ -116,3 +116,64 @@ def _plot_spectrum(ydata, frequencies, figsize=(15, 7), show=True):
 
     if show:
         plt.show()
+
+
+def plot_tfr(
+    tfr,
+    frequencies,
+    sfreq,
+    collapse_epochs=True,
+    collapse_electrodes=False,
+    figsize=(7, 5),
+):
+    """
+        Plot the time-course of one of the evoked frequencies.
+
+        Args
+        ----'
+            collapse_epochs : bool
+                Whether to average over the epochs or not.
+            collapse_electrodes : bool
+                Whether to average over electrodes or not.
+            figsize : tup
+                Matplotlib figure size.
+        """
+
+    # if frequency is None or frequency == "stimulation":
+    #    y = self.stimulation.tfr
+    #    z = self.stimulation.frequencies
+    # elif type(frequency) is str:
+    #    y = self.__getattribute__(frequency).tfr
+    #    z = self.__getattribute__(frequency).frequencies
+
+    y = tfr
+    z = frequencies
+
+    x = np.arange(y.shape[-1]) / sfreq
+
+    collapse_axes = tuple(
+        [ax for ax, b in enumerate([collapse_epochs, collapse_electrodes]) if b]
+    )
+    if len(collapse_axes) > 0:
+        y = y.mean(axis=collapse_axes)
+    # Make time the first dimension
+    y = np.rollaxis(y, -1)
+    # Make a figure (-1 is now freq. dimension)
+    nplots = y.shape[-1]
+    nrows = int(np.ceil(np.sqrt(nplots)))
+    ncols = int(np.ceil(nplots / nrows))
+    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
+    # y = np.squeeze(y)
+    for idx in range(nplots):
+        # Choose axes to plot in
+        ax = axes.flatten()[idx] if nplots > 1 else axes
+        # Plot the individual lines
+        ax.plot(x, y[..., idx], color="blue", alpha=0.1)
+        # Plot the mean of the data
+        if y[..., idx].size > y.shape[0]:
+            ax.plot(x, y[..., idx].mean(axis=-1))
+        ax.set_xlabel("Time (s)")
+        ax.set_ylabel("Amplitude")
+        ax.set_title(str(z.flatten()[idx]) + " Hz")
+
+    plt.show()
