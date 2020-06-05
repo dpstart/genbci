@@ -12,17 +12,7 @@ import torch
 
 from genbci.generate.wgan import WGAN_Discriminator, WGAN_Generator
 from genbci.scripts import dataprep_ssvep
-
-
-def init_torch_and_get_device(random_state=42):
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = True
-    np.random.seed(random_state)
-    torch.manual_seed(random_state)
-    torch.cuda.manual_seed_all(random_state)
-    random.seed(random_state)
-
-    return torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+from genbci.util import init_torch_and_get_device, weights_init
 
 
 parser = argparse.ArgumentParser()
@@ -91,32 +81,8 @@ opt.T = 3.0
 opt.plot_steps = 50
 
 
-def weights_init(m):
-    if isinstance(m, nn.Conv1d):
-        torch.nn.init.xavier_uniform_(m.weight)
-        if m.bias is not None:
-            torch.nn.init.zeros_(m.bias)
-
-
-for nclass in range(0, 3):
-
-    if nclass == 0:
-        data_train = dataprep_ssvep.data_class0
-    if nclass == 1:
-        data_train = dataprep_ssvep.data_class1
-        label_train = dataprep_ssvep.label_class1
-    if nclass == 2:
-        data_train = dataprep_ssvep.data_class2
-        label_train = dataprep_ssvep.label_class2
-
-    data_train = data_train.swapaxes(1, 2)
-print(data_train.shape)
-datatrain = torch.from_numpy(data_train)
-label = torch.from_numpy(label_train)
-
-dataset = torch.utils.data.TensorDataset(datatrain, label)
 dataloader = torch.utils.data.DataLoader(
-    dataset=dataset, batch_size=opt.batch_size, shuffle=True
+    dataset=dataprep_ssvep.dataset, batch_size=opt.batch_size, shuffle=True
 )
 
 
@@ -171,10 +137,10 @@ def eval_fn(dataloader, generator, discriminator, epoch, opt, losses_d, losses_g
 
     if epoch % opt.plot_steps == 0:
         # TODO Implement checkpointing
-        freqs_tmp = np.fft.rfftfreq(data_train.shape[2], d=1 / 250.0)
+        freqs_tmp = np.fft.rfftfreq(dataprep_ssvep.data_train.shape[2], d=1 / 250.0)
 
         # Compute FFT frequencies
-        train_fft = np.fft.rfft(data_train, axis=2)
+        train_fft = np.fft.rfft(dataprep_ssvep.data_train, axis=2)
 
         # Compute FFT on training data
         train_amps = np.abs(train_fft).mean(axis=1).mean(axis=0)

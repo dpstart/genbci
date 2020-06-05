@@ -3,6 +3,27 @@ from torch.autograd import Variable
 from torch.nn import Module
 import numpy as np
 import scipy.io as sio
+import torch
+import torch.nn as nn
+import random
+
+
+def weights_init(m):
+    if isinstance(m, nn.Conv1d):
+        torch.nn.init.xavier_uniform_(m.weight)
+        if m.bias is not None:
+            torch.nn.init.zeros_(m.bias)
+
+
+def init_torch_and_get_device(random_state=42):
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = True
+    np.random.seed(random_state)
+    torch.manual_seed(random_state)
+    torch.cuda.manual_seed_all(random_state)
+    random.seed(random_state)
+
+    return torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def compute_harmonics(frequencies, fmin=0.1, fmax=50, orders=range(2, 5)):

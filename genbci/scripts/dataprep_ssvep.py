@@ -1,6 +1,8 @@
 import numpy as np
 from scipy import signal
 
+import torch
+
 # pre-processing definition
 def data_process(input_data):
 
@@ -90,3 +92,22 @@ label_class2 = [
 label_class2 = np.concatenate(label_class2)
 # pre-processing
 data_class2 = data_process(data_class2)
+
+
+for nclass in range(0, 3):
+
+    if nclass == 0:
+        data_train = data_class0
+    if nclass == 1:
+        data_train = data_class1
+        label_train = label_class1
+    if nclass == 2:
+        data_train = data_class2
+        label_train = label_class2
+
+    data_train = data_train.swapaxes(1, 2)
+
+datatrain = torch.from_numpy(data_train)
+label = torch.from_numpy(label_train)
+
+dataset = torch.utils.data.TensorDataset(datatrain, label)
