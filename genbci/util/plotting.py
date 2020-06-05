@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def plot_snr(snr, frequencies):
+def plot_snr(snr, frequencies, **kwargs):
     """
         Plot the signal-to-noise-ratio-spectrum that has been calculated for
         this data.
@@ -25,7 +25,35 @@ def plot_snr(snr, frequencies):
     # ydata = ydata.mean(
     # axis=tuple([x for x in range(2) if [collapse_epochs, collapse_electrodes][x]])
     # )
-    _plot_spectrum(snr, frequencies)
+    _plot_spectrum(snr, frequencies, **kwargs)
+
+
+def plot_psd(
+    psd,
+    frequencies,
+    log_scale=True,
+    collapse_epochs=True,
+    collapse_electrodes=False,
+    **kwargs,
+):
+    """
+        Plot the power-spectrum that has been calculated for this data.
+        Parameters
+        ----------
+        log_scale : bool
+            Yes or no
+        collapse_epochs : bool
+            Whether you want to plot the average of all epochs (default),
+            or each power-spectrum individually.
+        collapse_electrodes : bool
+            Whether you want to plot each electrode individually
+            (default), or only the average of all electrodes.
+        """
+    ydata = psd
+    ydata = ydata.mean(
+        axis=tuple([x for x in range(2) if [collapse_epochs, collapse_electrodes][x]])
+    )
+    return _plot_spectrum(ydata, frequencies, **kwargs)
 
 
 def _plot_spectrum(ydata, frequencies, figsize=(15, 7), show=True):
