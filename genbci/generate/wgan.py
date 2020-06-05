@@ -6,9 +6,10 @@ from torch import optim
 import torch.autograd as autograd
 import torch.nn.functional as F
 import numpy as np
-from genbci.generate.util import *
+from genbci.util import *
 from genbci.generate.gan import GAN_Discriminator
 from genbci.generate.gan import GAN_Generator
+
 
 class WGAN_Discriminator(GAN_Discriminator):
     """
@@ -18,10 +19,11 @@ class WGAN_Discriminator(GAN_Discriminator):
     Arjovsky, M., Chintala, S., & Bottou, L. (2017). Wasserstein GAN.
     Retrieved from http://arxiv.org/abs/1701.07875
     """
+
     def __init__(self):
         super(WGAN_Discriminator, self).__init__()
 
-    def train_init(self,lr=1e-4,c=0.01):
+    def train_init(self, lr=1e-4, c=0.01):
         """
         Initialize RMS optimizer and weight clipping for discriminator
         Parameters
@@ -33,16 +35,16 @@ class WGAN_Discriminator(GAN_Discriminator):
         """
         self.c = c
         for p in self.parameters():
-            p.data.clamp_(-self.c,self.c)
+            p.data.clamp_(-self.c, self.c)
 
         self.loss = None
-        self.optimizer = optim.RMSprop(self.parameters(),lr=lr)
+        self.optimizer = optim.RMSprop(self.parameters(), lr=lr)
         self.did_init_train = True
 
     def update_parameters(self):
-        super(WGAN_Discriminator,self).update_parameters()
+        super(WGAN_Discriminator, self).update_parameters()
         for p in self.parameters():
-            p.data.clamp_(-self.c,self.c)
+            p.data.clamp_(-self.c, self.c)
 
     def train_batch(self, batch_real, batch_fake):
         """
@@ -77,7 +79,7 @@ class WGAN_Discriminator(GAN_Discriminator):
 
         loss_real = loss_real.data[0]
         loss_fake = loss_fake.data[0]
-        return loss_real,loss_fake # return loss
+        return loss_real, loss_fake  # return loss
 
 
 class WGAN_Generator(GAN_Generator):
@@ -88,6 +90,7 @@ class WGAN_Generator(GAN_Generator):
     Arjovsky, M., Chintala, S., & Bottou, L. (2017). Wasserstein GAN.
     Retrieved from http://arxiv.org/abs/1701.07875
     """
+
     def __init__(self):
         super(WGAN_Generator, self).__init__()
 
@@ -100,7 +103,7 @@ class WGAN_Generator(GAN_Generator):
             Learning rate for Adam
         """
         self.loss = None
-        self.optimizer = optim.RMSprop(self.parameters(),lr=lr)
+        self.optimizer = optim.RMSprop(self.parameters(), lr=lr)
         self.did_init_train = True
 
     def train_batch(self, batch_noise, discriminator):
@@ -132,8 +135,7 @@ class WGAN_Generator(GAN_Generator):
         self.update_parameters()
 
         loss = loss.data[0]
-        return loss # return loss
-
+        return loss  # return loss
 
 
 class WGAN_I_Discriminator(GAN_Discriminator):
@@ -145,12 +147,21 @@ class WGAN_I_Discriminator(GAN_Discriminator):
     Improved Training of Wasserstein GANs.
     Retrieved from http://arxiv.org/abs/1704.00028
     """
+
     def __init__(self):
         super(WGAN_I_Discriminator, self).__init__()
 
-    def train_init(self,alpha=1e-4,betas=(0.5,0.9),
-                     lambd=10,one_sided_penalty=False,distance_weighting=False,
-                     eps_drift=0.,eps_center=0.,lambd_consistency_term=0.):
+    def train_init(
+        self,
+        alpha=1e-4,
+        betas=(0.5, 0.9),
+        lambd=10,
+        one_sided_penalty=False,
+        distance_weighting=False,
+        eps_drift=0.0,
+        eps_center=0.0,
+        lambd_consistency_term=0.0,
+    ):
         """
         Initialize Adam optimizer for discriminator
         Parameters
@@ -182,7 +193,7 @@ class WGAN_I_Discriminator(GAN_Discriminator):
         EEG-GAN: Generative adversarial networks for electroencephalograhic
         (EEG) brain signals. Retrieved from https://arxiv.org/abs/1806.01875
         """
-        super(WGAN_I_Discriminator,self).train_init(alpha,betas)
+        super(WGAN_I_Discriminator, self).train_init(alpha, betas)
         self.loss = None
         self.lambd = lambd
         self.one_sided_penalty = one_sided_penalty
@@ -218,40 +229,42 @@ class WGAN_I_Discriminator(GAN_Discriminator):
         one = torch.tensor(1, dtype=torch.float)
         mone = one * -1
 
-        batch_real,one,mone = cuda_check([batch_real,one,mone])
+        batch_real, one, mone = cuda_check([batch_real, one, mone])
 
         fx_real = self(batch_real)
         loss_real = fx_real.mean()
-        loss_real.backward(mone,
-                             retain_graph=(self.eps_drift>0 or self.eps_center>0))
+        loss_real.backward(
+            mone, retain_graph=(self.eps_drift > 0 or self.eps_center > 0)
+        )
 
         fx_fake = self(batch_fake)
         loss_fake = fx_fake.mean()
-        loss_fake.backward(one,
-                             retain_graph=(self.eps_drift>0 or self.eps_center>0))
+        loss_fake.backward(
+            one, retain_graph=(self.eps_drift > 0 or self.eps_center > 0)
+        )
 
         loss_drift = 0
         loss_center = 0
-        if self.eps_drift>0:
-            tmp_drift = self.eps_drift*loss_real**2
-            tmp_drift.backward(retain_graph=self.eps_center>0)
+        if self.eps_drift > 0:
+            tmp_drift = self.eps_drift * loss_real ** 2
+            tmp_drift.backward(retain_graph=self.eps_center > 0)
             loss_drift = tmp_drift.data[0]
-        if self.eps_center>0:
-            tmp_center = (loss_real+loss_fake)
-            tmp_center = self.eps_center*tmp_center**2
+        if self.eps_center > 0:
+            tmp_center = loss_real + loss_fake
+            tmp_center = self.eps_center * tmp_center ** 2
             tmp_center.backward()
             loss_center = tmp_center.item()
 
-        #loss_consistency_term
-        #if self.lambd_consistency_term>0:
+        # loss_consistency_term
+        # if self.lambd_consistency_term>0:
         #    batch_real_1
 
         dist = 1
         if self.distance_weighting:
-            dist = (loss_real-loss_fake).detach()
+            dist = (loss_real - loss_fake).detach()
             dist = dist.clamp(min=0)
         loss_penalty = self.calc_gradient_penalty(batch_real, batch_fake)
-        loss_penalty = self.lambd*dist*loss_penalty
+        loss_penalty = self.lambd * dist * loss_penalty
         loss_penalty.backward()
 
         # Update parameters
@@ -260,8 +273,13 @@ class WGAN_I_Discriminator(GAN_Discriminator):
         loss_real = -loss_real.item()
         loss_fake = loss_fake.item()
         loss_penalty = loss_penalty.item()
-        return loss_real,loss_fake,loss_penalty,loss_drift,loss_center # return loss
-
+        return (
+            loss_real,
+            loss_fake,
+            loss_penalty,
+            loss_drift,
+            loss_center,
+        )  # return loss
 
     def calc_gradient_penalty(self, batch_real, batch_fake):
         """
@@ -277,24 +295,31 @@ class WGAN_I_Discriminator(GAN_Discriminator):
         gradient_penalty : autograd.Variable
             Gradient penalties
         """
-        alpha = torch.rand(batch_real.data.size(0),*((len(batch_real.data.size())-1)*[1]))
+        alpha = torch.rand(
+            batch_real.data.size(0), *((len(batch_real.data.size()) - 1) * [1])
+        )
         alpha = alpha.expand(batch_real.data.size())
-        batch_real,alpha = cuda_check([batch_real,alpha])
+        batch_real, alpha = cuda_check([batch_real, alpha])
 
         interpolates = alpha * batch_real.data + ((1 - alpha) * batch_fake.data)
         interpolates = Variable(interpolates, requires_grad=True)
-        alpha,interpolates = cuda_check([alpha,interpolates])
+        alpha, interpolates = cuda_check([alpha, interpolates])
 
         disc_interpolates = self(interpolates)
 
         ones = torch.ones(disc_interpolates.size())
-        interpolates,ones = cuda_check([interpolates,ones])
+        interpolates, ones = cuda_check([interpolates, ones])
 
-        gradients = autograd.grad(outputs=disc_interpolates, inputs=interpolates,
-                                    grad_outputs=ones,
-                                    create_graph=True, retain_graph=True, only_inputs=True)[0]
+        gradients = autograd.grad(
+            outputs=disc_interpolates,
+            inputs=interpolates,
+            grad_outputs=ones,
+            create_graph=True,
+            retain_graph=True,
+            only_inputs=True,
+        )[0]
         gradients = gradients.view(gradients.size(0), -1)
-        tmp = (gradients.norm(2, dim=1) - 1)
+        tmp = gradients.norm(2, dim=1) - 1
         if self.one_sided_penalty:
             tmp = tmp.clamp(min=0)
         gradient_penalty = ((tmp) ** 2).mean()
@@ -311,10 +336,11 @@ class WGAN_I_Generator(GAN_Generator):
     Improved Training of Wasserstein GANs.
     Retrieved from http://arxiv.org/abs/1704.00028
     """
+
     def __init__(self):
         super(WGAN_I_Generator, self).__init__()
 
-    def train_init(self,alpha=1e-4,betas=(0.5,0.9)):
+    def train_init(self, alpha=1e-4, betas=(0.5, 0.9)):
         """
         Initialize Adam optimizer for generator
         Parameters
@@ -325,7 +351,7 @@ class WGAN_I_Generator(GAN_Generator):
             Betas for Adam
         """
         self.loss = None
-        self.optimizer = optim.Adam(self.parameters(),lr=alpha,betas=betas)
+        self.optimizer = optim.Adam(self.parameters(), lr=alpha, betas=betas)
         self.did_init_train = True
 
     def train_batch(self, batch_noise, discriminator):
@@ -347,7 +373,7 @@ class WGAN_I_Generator(GAN_Generator):
 
         one = torch.tensor(1, dtype=torch.float)
         mone = one * -1
-        batch_noise,mone = cuda_check([batch_noise,mone])
+        batch_noise, mone = cuda_check([batch_noise, mone])
 
         # Generate and discriminate
         gen = self(batch_noise)
@@ -360,4 +386,5 @@ class WGAN_I_Generator(GAN_Generator):
         self.update_parameters()
 
         loss = loss.item()
-        return loss # return loss
+        return loss  # return loss
+

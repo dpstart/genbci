@@ -3,10 +3,11 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from torch import optim
-from genbci.generate.util import *
+from genbci.util import *
 import torch.autograd as autograd
 import torch.nn.functional as F
 import numpy as np
+
 
 class GAN_Module(nn.Module):
     """
@@ -19,12 +20,13 @@ class GAN_Module(nn.Module):
     loss : torch.nn.Loss
         Loss function
     """
+
     def __init__(self):
         super(GAN_Module, self).__init__()
 
         self.did_init_train = False
 
-    def save_model(self,fname):
+    def save_model(self, fname):
         """
         Saves `state_dict` of model and optimizer
 
@@ -34,16 +36,17 @@ class GAN_Module(nn.Module):
             Filename to save
         """
         cuda = False
-        if next(self.parameters()).is_cuda: cuda = True
+        if next(self.parameters()).is_cuda:
+            cuda = True
         cpu_model = self.cpu()
         model_state = cpu_model.state_dict()
         opt_state = cpu_model.optimizer.state_dict()
 
-        torch.save((model_state,opt_state,self.did_init_train),fname)
+        torch.save((model_state, opt_state, self.did_init_train), fname)
         if cuda:
             self.cuda()
 
-    def load_model(self,fname):
+    def load_model(self, fname):
         """
         Loads `state_dict` of model and optimizer
 
@@ -52,7 +55,7 @@ class GAN_Module(nn.Module):
         fname : str
             Filename to load from
         """
-        model_state,opt_state,self.did_init_train = torch.load(fname)
+        model_state, opt_state, self.did_init_train = torch.load(fname)
 
         self.load_state_dict(model_state)
         self.optimizer.load_state_dict(opt_state)
@@ -68,10 +71,11 @@ class GAN_Discriminator(GAN_Module):
     Ozair, S., … Bengio, Y. (2014). Generative Adversarial Networks.
     Retrieved from http://arxiv.org/abs/1406.2661
     """
+
     def __init__(self):
         super(GAN_Discriminator, self).__init__()
 
-    def train_init(self,alpha=1e-4,betas=(0.5,0.9)):
+    def train_init(self, alpha=1e-4, betas=(0.5, 0.9)):
         """
         Initialize Adam optimizer and BCE loss for discriminator
 
@@ -82,7 +86,7 @@ class GAN_Discriminator(GAN_Module):
         betas : (float,float), optional
             Betas for Adam
         """
-        self.optimizer = optim.Adam(self.parameters(),lr=alpha,betas=betas)
+        self.optimizer = optim.Adam(self.parameters(), lr=alpha, betas=betas)
         self.loss = torch.nn.BCELoss()
         self.did_init_train = True
 
@@ -124,23 +128,23 @@ class GAN_Discriminator(GAN_Module):
         ones_label = Variable(ones_label)
         zeros_label = Variable(zeros_label)
 
-        batch_real,ones_label,zeros_label = cuda_check([batch_real,
-                                                                ones_label,
-                                                                zeros_label])
+        batch_real, ones_label, zeros_label = cuda_check(
+            [batch_real, ones_label, zeros_label]
+        )
 
         # Compute output and loss
         fx_real = self.forward(batch_real)
-        loss_real = self.loss.forward(fx_real,ones_label)
+        loss_real = self.loss.forward(fx_real, ones_label)
         loss_real.backward()
         fx_fake = self.forward(batch_fake)
-        loss_fake = self.loss.forward(fx_fake,zeros_label)
+        loss_fake = self.loss.forward(fx_fake, zeros_label)
         loss_fake.backward()
 
         self.update_parameters()
 
         loss_real = loss_real.data[0]
         loss_fake = loss_fake.data[0]
-        return loss_real,loss_fake # return loss
+        return loss_real, loss_fake  # return loss
 
 
 class GAN_Generator(GAN_Module):
@@ -153,10 +157,11 @@ class GAN_Generator(GAN_Module):
     Ozair, S., … Bengio, Y. (2014). Generative Adversarial Networks.
     Retrieved from http://arxiv.org/abs/1406.2661
     """
+
     def __init__(self):
         super(GAN_Generator, self).__init__()
 
-    def train_init(self,alpha=1e-4,betas=(0.5,0.9)):
+    def train_init(self, alpha=1e-4, betas=(0.5, 0.9)):
         """
         Initialize Adam optimizer and BCE loss for generator
 
@@ -167,18 +172,18 @@ class GAN_Generator(GAN_Module):
         betas : (float,float), optional
             Betas for Adam
         """
-        self.optimizer = optim.Adam(self.parameters(),lr=alpha,betas=betas)
+        self.optimizer = optim.Adam(self.parameters(), lr=alpha, betas=betas)
         self.loss = torch.nn.BCELoss()
         self.did_init_train = True
 
-    def pre_train(self,discriminator):
+    def pre_train(self, discriminator):
         if not self.did_init_train:
             self.train_init()
 
         self.zero_grad()
         self.optimizer.zero_grad()
         for p in discriminator.parameters():
-            p.requires_grad = False    # to avoid computation
+            p.requires_grad = False  # to avoid computation
 
     def update_parameters(self):
         self.optimizer.step()
@@ -210,9 +215,9 @@ class GAN_Generator(GAN_Module):
 
         ones_label = Variable(ones_label)
 
-        batch_noise,ones_label = cuda_check([batch_noise,ones_label])
+        batch_noise, ones_label = cuda_check([batch_noise, ones_label])
 
-        loss = self.loss.forward(disc,ones_label)
+        loss = self.loss.forward(disc, ones_label)
 
         # Backprop gradient
         loss.backward()
@@ -221,7 +226,7 @@ class GAN_Generator(GAN_Module):
         self.update_parameters()
 
         loss = loss.data[0]
-        return loss # return loss
+        return loss  # return loss
 
 
 class GAN_Discriminator_SoftPlus(GAN_Module):
@@ -235,10 +240,11 @@ class GAN_Discriminator_SoftPlus(GAN_Module):
     Computer Vision and Pattern Recognition; Neural and Evolutionary Computing.
     Retrieved from http://arxiv.org/abs/1606.03498
     """
+
     def __init__(self):
         super(GAN_Discriminator_SoftPlus, self).__init__()
 
-    def train_init(self,alpha=1e-4,betas=(0.5,0.9)):
+    def train_init(self, alpha=1e-4, betas=(0.5, 0.9)):
         """
         Initialize Adam optimizer for discriminator
 
@@ -249,7 +255,7 @@ class GAN_Discriminator_SoftPlus(GAN_Module):
         betas : (float,float), optional
             Betas for Adam
         """
-        self.optimizer = optim.Adam(self.parameters(),lr=alpha,betas=betas)
+        self.optimizer = optim.Adam(self.parameters(), lr=alpha, betas=betas)
         self.loss = None
         self.did_init_train = True
 
@@ -298,7 +304,7 @@ class GAN_Discriminator_SoftPlus(GAN_Module):
 
         loss_real = loss_real.data[0]
         loss_fake = loss_fake.data[0]
-        return loss_real,loss_fake # return loss
+        return loss_real, loss_fake  # return loss
 
 
 class GAN_Generator_SoftPlus(GAN_Module):
@@ -312,10 +318,11 @@ class GAN_Generator_SoftPlus(GAN_Module):
     Computer Vision and Pattern Recognition; Neural and Evolutionary Computing.
     Retrieved from http://arxiv.org/abs/1606.03498
     """
+
     def __init__(self):
         super(GAN_Generator_SoftPlus, self).__init__()
 
-    def train_init(self,alpha=1e-4,betas=(0.5,0.9)):
+    def train_init(self, alpha=1e-4, betas=(0.5, 0.9)):
         """
         Initialize Adam optimizer for generator
 
@@ -326,18 +333,18 @@ class GAN_Generator_SoftPlus(GAN_Module):
         betas : (float,float), optional
             Betas for Adam
         """
-        self.optimizer = optim.Adam(self.parameters(),lr=alpha,betas=betas)
+        self.optimizer = optim.Adam(self.parameters(), lr=alpha, betas=betas)
         self.loss = None
         self.did_init_train = True
 
-    def pre_train(self,discriminator):
+    def pre_train(self, discriminator):
         if not self.did_init_train:
             self.train_init()
 
         self.zero_grad()
         self.optimizer.zero_grad()
         for p in discriminator.parameters():
-            p.requires_grad = False    # to avoid computation
+            p.requires_grad = False  # to avoid computation
 
     def update_parameters(self):
         self.optimizer.step()
@@ -374,4 +381,5 @@ class GAN_Generator_SoftPlus(GAN_Module):
         self.update_parameters()
 
         loss = loss.data[0]
-        return loss # return loss
+        return loss  # return loss
+

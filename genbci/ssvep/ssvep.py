@@ -12,6 +12,7 @@ from copy import deepcopy
 import xarray as xr
 from scipy.ndimage.filters import gaussian_filter
 
+
 @dataclass
 class EvokedFrequency:
 
@@ -39,7 +40,6 @@ class SSVEP(mne.Epochs):
     ):
 
         self.info = deepcopy(epochs.info)
-        self.events = deepcopy(epochs.events)
 
         self.frequencies = freqs
         self.psd = psd
@@ -127,6 +127,20 @@ class SSVEP(mne.Epochs):
             axis=-1,
         )
 
+    def get_snr(self, collapse_epochs=True, collapse_electrodes=True):
+        # Construct the SNR spectrum
+        ydata = np.stack(
+            [self._get_snr(freq) for idx, freq in enumerate(self.frequencies)], axis=-1
+        )
+        # Average over axes if necessary
+        ydata = ydata.mean(
+            axis=tuple(
+                [x for x in range(2) if [collapse_epochs, collapse_electrodes][x]]
+            )
+        )
+
+        return ydata
+
     # Helper functions to get specific frequencies:
     def _get_snr(self, freqs):
         """
@@ -204,8 +218,7 @@ class SSVEP(mne.Epochs):
             raise NotImplementedError("Only RLS is available so far.")
         return tfr_data
 
-    def plot_snr(self, collapse_epochs=True, collapse_electrodes=False,
-                 **kwargs):
+    def plot_snr(self, collapse_epochs=True, collapse_electrodes=False, **kwargs):
         """
         Plot the signal-to-noise-ratio-spectrum that has been calculated for
         this data.
@@ -221,13 +234,15 @@ class SSVEP(mne.Epochs):
         """
 
         # Construct the SNR spectrum
-        ydata = np.stack([self._get_snr(freq)
-                          for idx, freq in enumerate(self.frequencies)],
-                         axis=-1)
+        ydata = np.stack(
+            [self._get_snr(freq) for idx, freq in enumerate(self.frequencies)], axis=-1
+        )
         # Average over axes if necessary
-        ydata = ydata.mean(axis=tuple([x for x in range(2)
-                                       if [collapse_epochs,
-                                           collapse_electrodes][x]]))
+        ydata = ydata.mean(
+            axis=tuple(
+                [x for x in range(2) if [collapse_epochs, collapse_electrodes][x]]
+            )
+        )
         self._plot_spectrum(ydata, **kwargs)
 
     def _plot_spectrum(self, ydata, figsize=(15, 7), show=True):
@@ -236,41 +251,54 @@ class SSVEP(mne.Epochs):
         """
         # Make sure frequency data is the first index
         ydata = np.transpose(
-            ydata, axes=([ydata.shape.index(self.frequencies.size)] +
-                         [dim for dim, _ in enumerate(ydata.shape)
-                          if dim != ydata.shape.index(self.frequencies.size)])
+            ydata,
+            axes=(
+                [ydata.shape.index(self.frequencies.size)]
+                + [
+                    dim
+                    for dim, _ in enumerate(ydata.shape)
+                    if dim != ydata.shape.index(self.frequencies.size)
+                ]
+            ),
         )
         # Start figure
         plt.figure(figsize=figsize)
-        xmarks = np.concatenate([a.flatten() for a in
-                                 [self.stimulation.frequencies,
-                                  self.harmonic.frequencies,
-                                  self.subharmonic.frequencies,
-                                  self.intermodulation.frequencies]
-                                 if np.any(a)]).tolist()
+        xmarks = np.concatenate(
+            [
+                a.flatten()
+                for a in [
+                    self.stimulation.frequencies,
+                    self.harmonic.frequencies,
+                    self.subharmonic.frequencies,
+                    self.intermodulation.frequencies,
+                ]
+                if np.any(a)
+            ]
+        ).tolist()
         # If we didn't collapse over epochs, split the data
         if ydata.ndim <= 2:
-            plt.plot(self.frequencies, ydata, color='blue', alpha=0.3)
+            plt.plot(self.frequencies, ydata, color="blue", alpha=0.3)
             if ydata.ndim > 1:
-                plt.plot(self.frequencies, ydata.mean(axis=1), color='red')
+                plt.plot(self.frequencies, ydata.mean(axis=1), color="red")
             for xval in xmarks:
-                plt.axvline(xval, linestyle='--', color='gray')
+                plt.axvline(xval, linestyle="--", color="gray")
             plt.xticks(xmarks)
-            plt.title('Average spectrum of all epochs')
+            plt.title("Average spectrum of all epochs")
         elif ydata.ndim > 2:
             ydatas = [ydata[:, idx, :] for idx in range(ydata.shape[1])]
             for idx, ydata in enumerate(ydatas):
-                plt.subplot(np.ceil(np.sqrt(len(ydatas))),
-                            np.ceil(len(ydatas) /
-                                    np.ceil(np.sqrt(len(ydatas)))),
-                            idx + 1)
-                plt.plot(self.frequencies, ydata, color='blue', alpha=0.3)
+                plt.subplot(
+                    np.ceil(np.sqrt(len(ydatas))),
+                    np.ceil(len(ydatas) / np.ceil(np.sqrt(len(ydatas)))),
+                    idx + 1,
+                )
+                plt.plot(self.frequencies, ydata, color="blue", alpha=0.3)
                 if ydata.ndim > 1:
-                    plt.plot(self.frequencies, ydata.mean(axis=1), color='red')
+                    plt.plot(self.frequencies, ydata.mean(axis=1), color="red")
                 for xval in xmarks:
-                    plt.axvline(xval, linestyle='--', color='gray')
+                    plt.axvline(xval, linestyle="--", color="gray")
                 plt.xticks(xmarks)
-                plt.title('Spectrum of epoch {n}'.format(n=idx + 1))
+                plt.title("Spectrum of epoch {n}".format(n=idx + 1))
 
         if show:
             plt.show()
@@ -333,7 +361,6 @@ class SSVEP(mne.Epochs):
             ax.set_title(str(z.flatten()[idx]) + " Hz")
 
         plt.show()
-
 
     def plot_psd(
         self, log_scale=True, collapse_epochs=True, collapse_electrodes=False, **kwargs,
