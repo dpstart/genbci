@@ -10,8 +10,11 @@ import torch.nn.functional as F
 import torch.autograd as autograd
 import torch
 
-from genbci.generate.wgan import WGAN_Discriminator, WGAN_Generator
-from genbci.scripts import dataprep_ssvep
+from genbci.generate.model import (
+    SSVEP_Discriminator as Discriminator,
+    SSVEP_Generator as Generator,
+)
+from genbci.scripts import ssvep_sample
 from genbci.util import init_torch_and_get_device, weights_init
 
 
@@ -75,14 +78,18 @@ opt.device = init_torch_and_get_device()
 ### Setting some defaults
 opt.batch_size = 16
 opt.dropout_level = 0.05
-opt.img_shape = (9, 1500)
-opt.T = 3.0
-
+# opt.img_shape = (9, 1500)
 opt.plot_steps = 50
 
 
+opt.jobid = 1
+
+opt.modelname = "ssvep_wgan%s"
+if not os.path.exists(opt.modelpath):
+    os.makedirs(opt.modelpath)
+
 dataloader = torch.utils.data.DataLoader(
-    dataset=dataprep_ssvep.dataset, batch_size=opt.batch_size, shuffle=True
+    dataset=ssvep_sample.dataset, batch_size=opt.batch_size, shuffle=True
 )
 
 
@@ -136,11 +143,10 @@ def eval_fn(dataloader, generator, discriminator, epoch, opt, losses_d, losses_g
     discriminator.eval()
 
     if epoch % opt.plot_steps == 0:
-        # TODO Implement checkpointing
-        freqs_tmp = np.fft.rfftfreq(dataprep_ssvep.data_train.shape[2], d=1 / 250.0)
+        freqs_tmp = np.fft.rfftfreq(ssvep_sample.data_train.shape[2], d=1 / 250.0)
 
         # Compute FFT frequencies
-        train_fft = np.fft.rfft(dataprep_ssvep.data_train, axis=2)
+        train_fft = np.fft.rfft(ssvep_sample.data_train, axis=2)
 
         # Compute FFT on training data
         train_amps = np.abs(train_fft).mean(axis=1).mean(axis=0)
@@ -159,7 +165,11 @@ def eval_fn(dataloader, generator, discriminator, epoch, opt, losses_d, losses_g
         plt.title("Frequency Spectrum")
         plt.xlabel("Hz")
         plt.legend()
-        plt.savefig(os.path.join(opt.modelpath, "_fft_%d.png" % epoch))
+        plt.savefig(
+            os.path.join(
+                opt.modelpath, opt.modelname % opt.jobid + "_fft_%d.png" % epoch
+            )
+        )
         plt.close()
 
         batch_fake = batch_fake.data.cpu().numpy()
@@ -173,73 +183,39 @@ def eval_fn(dataloader, generator, discriminator, epoch, opt, losses_d, losses_g
             plt.xticks((), ())
             plt.yticks((), ())
         plt.subplots_adjust(hspace=0)
-        plt.savefig(os.path.join(opt.modelpath, "_fakes_%d.png" % epoch))
+        plt.savefig(
+            os.path.join(
+                opt.modelpath, opt.modelname % opt.jobid + "_fakes_%d.png" % epoch
+            )
+        )
         plt.close()
 
         plt.figure(figsize=(10, 15))
         plt.plot(np.asarray(losses_d))
         plt.title("Loss Discriminator")
-        plt.savefig(os.path.join(opt.modelpath, "loss_disc_%d.png" % epoch))
+        plt.savefig(
+            os.path.join(
+                opt.modelpath, opt.modelname % opt.jobid + "loss_disc_%d.png" % epoch
+            )
+        )
         plt.close()
 
         plt.figure(figsize=(10, 15))
         plt.plot(np.asarray(losses_g))
         plt.title("Loss generator")
-        plt.savefig(os.path.join(opt.modelpath, "loss_gen_%d.png" % epoch))
+        plt.savefig(
+            os.path.join(
+                opt.modelpath, opt.modelname % opt.jobid + "loss_gen_%d.png" % epoch
+            )
+        )
         plt.close()
 
-
-class Generator(WGAN_Generator):
-    def __init__(self, nz):
-        super(Generator, self).__init__()
-        self.nz = nz
-        self.layer1 = nn.Sequential(nn.Linear(self.nz, 640), nn.PReLU())
-        self.layer2 = nn.Sequential(
-            nn.ConvTranspose1d(
-                in_channels=16, out_channels=16, kernel_size=22, stride=4
-            ),
-            nn.PReLU(),
+        discriminator.save_model(
+            os.path.join(opt.modelpath, opt.modelname % opt.jobid + ".disc")
         )
-        self.layer3 = nn.Sequential(
-            nn.ConvTranspose1d(
-                in_channels=16, out_channels=16, kernel_size=18, stride=2
-            ),
-            nn.PReLU(),
+        generator.save_model(
+            os.path.join(opt.modelpath, opt.modelname % opt.jobid + ".gen")
         )
-        self.layer4 = nn.Sequential(
-            nn.ConvTranspose1d(
-                in_channels=16, out_channels=2, kernel_size=16, stride=4
-            ),
-            nn.Sigmoid(),
-        )
-
-    def forward(self, input):
-        out = self.layer1(input)
-        out = out.view(out.size(0), 16, 40)
-        out = self.layer2(out)
-        out = self.layer3(out)
-        out = self.layer4(out)
-        return out
-
-
-class Discriminator(WGAN_Discriminator):
-    def __init__(self):
-        super(Discriminator, self).__init__()
-        self.layer1 = nn.Sequential(
-            nn.Conv1d(in_channels=2, out_channels=16, kernel_size=10, stride=2),
-            nn.BatchNorm1d(num_features=16),
-            nn.LeakyReLU(0.2),
-            nn.MaxPool1d(2),
-        )
-        self.dense_layers = nn.Sequential(
-            nn.Linear(5968, 600), nn.LeakyReLU(0.2), nn.Linear(600, 1)
-        )
-
-    def forward(self, input):
-        out = self.layer1(input)
-        out = out.view(out.size(0), -1)
-        out = self.dense_layers(out)
-        return out
 
 
 # Initialize generator and discriminator
