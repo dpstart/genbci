@@ -83,10 +83,12 @@ opt = parser.parse_args()
 opt.device = init_torch_and_get_device()
 
 ### Setting some defaults
-opt.batch_size = 5
+opt.batch_size = 16
 opt.dropout_level = 0.05
 opt.img_shape = (9, 1500)
 opt.T = 3.0
+
+opt.plot_steps = 50
 
 
 def weights_init(m):
@@ -157,40 +159,68 @@ def train_fn(dataloader, generator, discriminator, opt):
                     % (epoch, opt.n_epochs, i, len(dataloader), loss_d, loss_g)
                 )
 
-                eval_fn(dataloader, generator, discriminator, epoch, opt)
+                eval_fn(
+                    dataloader, generator, discriminator, epoch, opt, losses_d, losses_g
+                )
 
 
-def eval_fn(dataloader, generator, discriminator, epoch, opt):
+def eval_fn(dataloader, generator, discriminator, epoch, opt, losses_d, losses_g):
 
     generator.eval()
     discriminator.eval()
 
-    # TODO Implement checkpointing
-    # TODO Fix ugly indexing
-    freqs_tmp = np.fft.rfftfreq(data_train.shape[2], d=1 / 250.0)
+    if epoch % opt.plot_steps == 0:
+        # TODO Implement checkpointing
+        freqs_tmp = np.fft.rfftfreq(data_train.shape[2], d=1 / 250.0)
 
-    # Compute FFT frequencies
-    train_fft = np.fft.rfft(data_train, axis=2)
+        # Compute FFT frequencies
+        train_fft = np.fft.rfft(data_train, axis=2)
 
-    # Compute FFT on training data
-    train_amps = np.abs(train_fft).mean(axis=1).mean(axis=0)
+        # Compute FFT on training data
+        train_amps = np.abs(train_fft).mean(axis=1).mean(axis=0)
 
-    # Noise for generator
-    z = torch.rand(opt.batch_size, opt.nz).to(opt.device)
+        # Noise for generator
+        z = torch.rand(opt.batch_size, opt.nz).to(opt.device)
 
-    # Get a batch of fake data and compute FFT
-    batch_fake = generator(z)
-    fake_fft = np.fft.rfft(batch_fake.data.cpu().numpy(), axis=2)
-    fake_amps = np.abs(fake_fft).mean(axis=1).mean(axis=0)
+        # Get a batch of fake data and compute FFT
+        batch_fake = generator(z)
+        fake_fft = np.fft.rfft(batch_fake.data.cpu().numpy(), axis=2)
+        fake_amps = np.abs(fake_fft).mean(axis=1).mean(axis=0)
 
-    plt.figure()
-    plt.plot(freqs_tmp, np.log(fake_amps), label="Fake")
-    plt.plot(freqs_tmp, np.log(train_amps), label="Real")
-    plt.title("Frequency Spectrum")
-    plt.xlabel("Hz")
-    plt.legend()
-    plt.savefig(os.path.join(opt.modelpath, "_fft_%d.png" % epoch))
-    plt.close()
+        plt.figure()
+        plt.plot(freqs_tmp, np.log(fake_amps), label="Fake")
+        plt.plot(freqs_tmp, np.log(train_amps), label="Real")
+        plt.title("Frequency Spectrum")
+        plt.xlabel("Hz")
+        plt.legend()
+        plt.savefig(os.path.join(opt.modelpath, "_fft_%d.png" % epoch))
+        plt.close()
+
+        batch_fake = batch_fake.data.cpu().numpy()
+
+        plt.figure(figsize=(10, 10))
+        for i in range(10):
+            plt.subplot(10, 1, i + 1)
+
+            # Working with 2 channels, plot only firt one. A bit ugly.
+            plt.plot(batch_fake[i, 0, ...].squeeze())
+            plt.xticks((), ())
+            plt.yticks((), ())
+        plt.subplots_adjust(hspace=0)
+        plt.savefig(os.path.join(opt.modelpath, "_fakes_%d.png" % epoch))
+        plt.close()
+
+        plt.figure(figsize=(10, 15))
+        plt.plot(np.asarray(losses_d))
+        plt.title("Loss Discriminator")
+        plt.savefig(os.path.join(opt.modelpath, "loss_disc_%d.png" % epoch))
+        plt.close()
+
+        plt.figure(figsize=(10, 15))
+        plt.plot(np.asarray(losses_g))
+        plt.title("Loss generator")
+        plt.savefig(os.path.join(opt.modelpath, "loss_gen_%d.png" % epoch))
+        plt.close()
 
 
 class Generator(WGAN_Generator):
