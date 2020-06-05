@@ -4,9 +4,48 @@ from torch.nn import Module
 import numpy as np
 import scipy.io as sio
 
-def get_balanced_batches(
-    n_trials, rng, shuffle, n_batches=None, batch_size=None
-):
+
+def compute_harmonics(frequencies, fmin=0.1, fmax=50, orders=range(2, 5)):
+    if not orders:
+        return None, None
+
+    if type(orders) is bool:
+        orders = [o for o in range(2, 6)]
+    elif type(orders) is int:
+        orders = [o for o in range(2, orders)]
+    try:
+        freqs = [
+            [n * f for n in orders if n * f <= fmax and n * f >= fmin]
+            for f in frequencies
+        ]
+    except:
+        freqs = [
+            [n * f for n in orders if n * f <= fmax and n * f >= fmin]
+            for f in [frequencies]
+        ]
+
+    return np.array(freqs), np.array(orders)
+
+
+def compute_subharmonics(frequencies, fmin=0.1, fmax=50, orders=range(2, 5)):
+    if not orders:
+        return None, None
+
+    if type(orders) is bool:
+        orders = [o for o in range(2, 6)]  # default: 4 harmonics
+    elif type(orders) is int:
+        orders = [o for o in range(2, orders)]
+
+    freqs = [
+        [f / o if (f / o <= fmax and f / o >= fmin) else np.nan for o in orders]
+        for f in frequencies
+    ]
+    # freqs = [f for sublist in freqs for f in sublist]
+
+    return np.array(freqs), np.array(orders)
+
+
+def get_balanced_batches(n_trials, rng, shuffle, n_batches=None, batch_size=None):
     """Create indices for batches balanced in size 
     (batches will have maximum size difference of 1).
     Supply either batch size or number of batches. Resulting batches
@@ -51,8 +90,10 @@ def get_balanced_batches(
         i_start_trial = i_stop_trial
     assert i_start_trial == n_trials
     return batches
-def get_data(subject,training,PATH):
-    '''	Loads the dataset 2a of the BCI Competition IV
+
+
+def get_data(subject, training, PATH):
+    """	Loads the dataset 2a of the BCI Competition IV
     available on http://bnci-horizon-2020.eu/database/data-sets
     Keyword arguments:
     subject -- number of subject in [1, .. ,9]
@@ -61,40 +102,44 @@ def get_data(subject,training,PATH):
     
     Return:	data_return 	numpy matrix 	size = NO_valid_trial x 22 x 1750
             class_return 	numpy matrix 	size = NO_valid_trial
-    '''
+    """
     NO_channels = 22
-    NO_tests = 6*48 	
-    Window_Length = 7*250 
+    NO_tests = 6 * 48
+    Window_Length = 7 * 250
 
     class_return = np.zeros(NO_tests)
-    data_return = np.zeros((NO_tests,NO_channels,Window_Length))
+    data_return = np.zeros((NO_tests, NO_channels, Window_Length))
 
     NO_valid_trial = 0
     if training:
-        a = sio.loadmat(PATH+'A0'+str(subject)+'T.mat')
+        a = sio.loadmat(PATH + "A0" + str(subject) + "T.mat")
     else:
-        a = sio.loadmat(PATH+'A0'+str(subject)+'E.mat')
-    a_data = a['data']
-    for ii in range(0,a_data.size):
-        a_data1 = a_data[0,ii]
-        a_data2=[a_data1[0,0]]
-        a_data3=a_data2[0]
-        a_X 		= a_data3[0]
-        a_trial 	= a_data3[1]
-        a_y 		= a_data3[2]
-        a_fs 		= a_data3[3]
-        a_classes 	= a_data3[4]
+        a = sio.loadmat(PATH + "A0" + str(subject) + "E.mat")
+    a_data = a["data"]
+    for ii in range(0, a_data.size):
+        a_data1 = a_data[0, ii]
+        a_data2 = [a_data1[0, 0]]
+        a_data3 = a_data2[0]
+        a_X = a_data3[0]
+        a_trial = a_data3[1]
+        a_y = a_data3[2]
+        a_fs = a_data3[3]
+        a_classes = a_data3[4]
         a_artifacts = a_data3[5]
-        a_gender 	= a_data3[6]
-        a_age 		= a_data3[7]
-        for trial in range(0,a_trial.size):
-            if(a_artifacts[trial]==0):
-                data_return[NO_valid_trial,:,:] = np.transpose(a_X[int(a_trial[trial]):(int(a_trial[trial])+Window_Length),:22])
+        a_gender = a_data3[6]
+        a_age = a_data3[7]
+        for trial in range(0, a_trial.size):
+            if a_artifacts[trial] == 0:
+                data_return[NO_valid_trial, :, :] = np.transpose(
+                    a_X[
+                        int(a_trial[trial]) : (int(a_trial[trial]) + Window_Length), :22
+                    ]
+                )
                 class_return[NO_valid_trial] = int(a_y[trial])
-                NO_valid_trial +=1
+                NO_valid_trial += 1
 
+    return data_return[0:NO_valid_trial, :, :], class_return[0:NO_valid_trial]
 
-    return data_return[0:NO_valid_trial,:,:], class_return[0:NO_valid_trial]
 
 def cuda_check(module_list):
     """
@@ -113,8 +158,10 @@ def cuda_check(module_list):
     """
     cuda = False
     for mod in module_list:
-        if isinstance(mod,Variable): cuda = mod.is_cuda
-        elif isinstance(mod,Module): cuda = next(mod.parameters()).is_cuda
+        if isinstance(mod, Variable):
+            cuda = mod.is_cuda
+        elif isinstance(mod, Module):
+            cuda = next(mod.parameters()).is_cuda
 
         if cuda:
             break
@@ -127,22 +174,22 @@ def cuda_check(module_list):
     return module_list_new
 
 
-def change_learning_rate(optimizer,lr):
+def change_learning_rate(optimizer, lr):
     for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
+        param_group["lr"] = lr
 
 
 def weight_filler(m):
     classname = m.__class__.__name__
-    if classname.find('MultiConv') != -1:
+    if classname.find("MultiConv") != -1:
         for conv in m.convs:
-            conv.weight.data.normal_(0.0, 1.)
+            conv.weight.data.normal_(0.0, 1.0)
             if conv.bias is not None:
-                conv.bias.data.fill_(0.)
-    elif classname.find('Conv') != -1 or classname.find('Linear') != -1:
-        m.weight.data.normal_(0.0, 1.) # From progressive GAN paper
+                conv.bias.data.fill_(0.0)
+    elif classname.find("Conv") != -1 or classname.find("Linear") != -1:
+        m.weight.data.normal_(0.0, 1.0)  # From progressive GAN paper
         if m.bias is not None:
-            m.bias.data.fill_(0.)
-    elif classname.find('BatchNorm') != -1 or classname.find('LayerNorm') != -1:
+            m.bias.data.fill_(0.0)
+    elif classname.find("BatchNorm") != -1 or classname.find("LayerNorm") != -1:
         m.weight.data.normal_(1.0, 0.02)
-        m.bias.data.fill_(0.)
+        m.bias.data.fill_(0.0)

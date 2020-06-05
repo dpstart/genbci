@@ -142,8 +142,8 @@ class GAN_Discriminator(GAN_Module):
 
         self.update_parameters()
 
-        loss_real = loss_real.data[0]
-        loss_fake = loss_fake.data[0]
+        loss_real = loss_real.item()
+        loss_fake = loss_fake.item()
         return loss_real, loss_fake  # return loss
 
 
@@ -225,7 +225,7 @@ class GAN_Generator(GAN_Module):
         # Update parameters
         self.update_parameters()
 
-        loss = loss.data[0]
+        loss = loss.item()
         return loss  # return loss
 
 
@@ -302,8 +302,8 @@ class GAN_Discriminator_SoftPlus(GAN_Module):
 
         self.update_parameters()
 
-        loss_real = loss_real.data[0]
-        loss_fake = loss_fake.data[0]
+        loss_real = loss_real.item()
+        loss_fake = loss_fake.item()
         return loss_real, loss_fake  # return loss
 
 
@@ -380,6 +380,5 @@ class GAN_Generator_SoftPlus(GAN_Module):
         # Update parameters
         self.update_parameters()
 
-        loss = loss.data[0]
+        loss = loss.item()
         return loss  # return loss
-

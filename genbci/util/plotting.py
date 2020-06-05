@@ -19,7 +19,7 @@ def plot_snr(snr, frequencies, **kwargs):
 
     # Construct the SNR spectrum
     #    ydata = np.stack(
-    # [self._get_snr(freq) for idx, freq in enumerate(self.frequencies)], axis=-1
+    # [self.get_snr(freq) for idx, freq in enumerate(self.frequencies)], axis=-1
     # )
     ## Average over axes if necessary
     # ydata = ydata.mean(

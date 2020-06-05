@@ -9,8 +9,9 @@ from scipy.signal import lfilter
 from dataclasses import dataclass
 from typing import Optional, Sequence
 from copy import deepcopy
-import xarray as xr
 from scipy.ndimage.filters import gaussian_filter
+
+from genbci.util import compute_harmonics, compute_subharmonics
 
 
 @dataclass
@@ -19,7 +20,7 @@ class EvokedFrequency:
     psd: np.ndarray
     snr: np.ndarray
     frequencies: Sequence
-    tfr: Optional[xr.DataArray] = None
+    tfr: Optional[np.array] = None
 
 
 class SSVEP(mne.Epochs):
@@ -29,6 +30,8 @@ class SSVEP(mne.Epochs):
         stimulation_freq: Sequence,
         psd: np.array = None,
         freqs: np.ndarray = None,
+        harmonics=range(2, 5),
+        subharmonics=range(2, 5),
         fmin: float = 0.1,
         fmax: float = 50,
         tmin: Optional[float] = None,
@@ -54,11 +57,11 @@ class SSVEP(mne.Epochs):
 
         self.frequency_resolution = self.frequencies[1] - self.frequencies[0]
         self.stimulation_frequencies = np.array(stimulation_freq, dtype=float)
+        self.snr = self.get_snr_single(self.frequencies)
 
-        self.snr = self._get_snr(self.frequencies)
         self.stimulation = EvokedFrequency(
-            psd=self._get_amp(self.stimulation_frequencies),
-            snr=self._get_snr(self.stimulation_frequencies),
+            psd=self.get_amp(self.stimulation_frequencies),
+            snr=self.get_snr_single(self.stimulation_frequencies),
             frequencies=self.stimulation_frequencies,
             tfr=(
                 self._compute_tfr(
@@ -68,7 +71,37 @@ class SSVEP(mne.Epochs):
                 else None
             ),
         )
-        # TODO Add harmonics
+
+        ###### Harmonics
+        harm_freqs, harm_suborder = compute_harmonics(
+            harmonics, fmin=self.fmin, fmax=self.fmax
+        )
+
+        self.harmonic = EvokedFrequency(
+            frequencies=harm_freqs,
+            psd=self.get_amp(harm_freqs),
+            snr=self.get_snr_single(harm_freqs),
+            tfr=(
+                self._compute_tfr(epochs, harm_freqs, window_width=tfr_time_window)
+                if compute_tfr
+                else None
+            ),
+        )
+
+        ###### Subharmonics
+        sub_freqs, sub_suborder = compute_subharmonics(
+            subharmonics, fmin=self.fmin, fmax=self.fmax
+        )
+        self.subharmonic = EvokedFrequency(
+            frequencies=sub_freqs,
+            psd=self.get_amp(sub_freqs),
+            snr=self.get_snr_single(sub_freqs),
+            tfr=(
+                self._compute_tfr(epochs, sub_freqs, window_width=tfr_time_window)
+                if compute_tfr
+                else None
+            ),
+        )
 
     def predict_epochs(
         self,
@@ -109,7 +142,7 @@ class SSVEP(mne.Epochs):
 
         return np.array(predictions)
 
-    def _get_amp(self, freqs):
+    def get_amp(self, freqs):
         """
         Helper function to get the freq-smoothed amplitude of a frequency
         """
@@ -130,7 +163,8 @@ class SSVEP(mne.Epochs):
     def get_snr(self, collapse_epochs=True, collapse_electrodes=True):
         # Construct the SNR spectrum
         ydata = np.stack(
-            [self._get_snr(freq) for idx, freq in enumerate(self.frequencies)], axis=-1
+            [self.get_snr_single(freq) for idx, freq in enumerate(self.frequencies)],
+            axis=-1,
         )
         # Average over axes if necessary
         ydata = ydata.mean(
@@ -142,7 +176,7 @@ class SSVEP(mne.Epochs):
         return ydata
 
     # Helper functions to get specific frequencies:
-    def _get_snr(self, freqs):
+    def get_snr_single(self, freqs):
         """
         Helper function to work out the SNR of a given frequency
         """

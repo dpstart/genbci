@@ -77,8 +77,8 @@ class WGAN_Discriminator(GAN_Discriminator):
 
         self.update_parameters()
 
-        loss_real = loss_real.data[0]
-        loss_fake = loss_fake.data[0]
+        loss_real = loss_real.item()
+        loss_fake = loss_fake.item()
         return loss_real, loss_fake  # return loss
 
 
@@ -134,7 +134,7 @@ class WGAN_Generator(GAN_Generator):
         # Update parameters
         self.update_parameters()
 
-        loss = loss.data[0]
+        loss = loss.item()
         return loss  # return loss
 
 
@@ -248,7 +248,7 @@ class WGAN_I_Discriminator(GAN_Discriminator):
         if self.eps_drift > 0:
             tmp_drift = self.eps_drift * loss_real ** 2
             tmp_drift.backward(retain_graph=self.eps_center > 0)
-            loss_drift = tmp_drift.data[0]
+            loss_drift = tmp_drift.item()
         if self.eps_center > 0:
             tmp_center = loss_real + loss_fake
             tmp_center = self.eps_center * tmp_center ** 2
@@ -387,4 +387,3 @@ class WGAN_I_Generator(GAN_Generator):
 
         loss = loss.item()
         return loss  # return loss
-
