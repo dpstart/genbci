@@ -279,7 +279,116 @@ class SSVEP(mne.Epochs):
         for i in range(len(self)):
             yield self.psd[i, ...]
 
-    def get_covariance(self, tmin=2.0, tmax=5.0) -> mne.Covariance:
 
-        # TODO remove tmin and tmax defaults
-        return mne.compute_covariance(self.epochs, tmin=tmin, tmax=tmax)
+from sklearn.base import BaseEstimator, TransformerMixin
+from genbci.util import butter_bandpass
+from pyriemann.utils.covariance import covariances
+
+
+class SSVEPCovariances(BaseEstimator, TransformerMixin):
+    """Estimate special form covariance matrix for SSVEP.
+    Estimation of special form covariance matrix dedicated to SSVEP processing.
+    A frequency banks is applied on the signal :math:`\mathbf{X}_i`
+    and a super trial is build using the concatenation of :math:`f=1, \ldots, F` frequency bands :
+    .. math::
+        \mathbf{\\tilde{X}}_i =  \left[
+                                 \\begin{array}{c}
+                                 \mathbf{X}_{i,1} \\\\
+                                 \vdots \\\\
+                                 \mathbf{X}_{i,F} \\\\
+                                 \end{array}
+                                 \\right]
+    This super trial :math:`\mathbf{\\tilde{X}}_i` will be used for covariance
+    estimation.
+    This allows to take into account the frequency structure of the signal, as
+    described in [1,2,3].
+    Parameters
+    ----------
+    estimator : string (default: 'scm')
+        covariance matrix estimator. For regularization consider 'lwf' or 'oas'
+        For a complete list of estimator, see `utils.covariance`.
+    freq_targets : list of float
+        list of n_frequency target frequencies.
+    freq_band : float
+        half-width of the frequency bands.
+    fs : float
+        sampling frequency of the signal.
+    order : integer (default: 4)
+        order of the Butterworth filter.
+    filttype : string (default: 'forward')
+        type of the Butterworth filter: 'forward' or 
+        'forward-backward' for a bilateral filtering.
+    See Also
+    --------
+    Covariances
+    CospCovariances
+    References
+    ----------
+    [1] M. Congedo, A. Barachant, A. Andreev ,"A New generation of
+    Brain-Computer Interface Based on Riemannian Geometry", arXiv: 1310.8115.
+    2013.
+    [2] TODO, NeuroComputing2016
+    [3] TODO, NeuroInformatics2020
+    """
+
+    def __init__(
+        self,
+        estimator="scm",
+        freq_targets=[13, 17, 21],
+        freq_band=0.1,
+        fs=256,
+        order=4,
+        filttype="forward-backward",
+    ):
+        """Init."""
+        self.estimator = estimator
+        self.freq_targets = freq_targets
+        self.freq_band = freq_band
+        self.fs = fs
+        self.order = order
+        self.filttype = filttype
+
+    def fit(self, X, y):
+        """Fit.
+        Do nothing. For compatibility purpose.
+        Parameters
+        ----------
+        X : ndarray, shape (n_trials, n_channels, n_samples)
+            ndarray of trials.
+        y : ndarray shape (n_trials,)
+            labels corresponding to each trial.
+        Returns
+        -------
+        self : SSVEPCovariances instance
+            The SSVEPCovariances instance.
+        """
+
+        return self
+
+    def transform(self, X):
+        """Estimate SSVEP form covariance matrices.
+        Parameters
+        ----------
+        X : ndarray, shape (n_trials, n_channels, n_samples)
+            ndarray of raw trials.
+        Returns
+        -------
+        covmats : ndarray, shape (n_trials, n_channel*n_frequency, n_channel*n_frequency)
+            ndarray of SSVEP covariance matrices for each trials.
+        """
+
+        X_ext = []
+        for f in self.freq_targets:
+            X_ext.append(
+                butter_bandpass(
+                    X,
+                    lowcut=f - self.freq_band,
+                    highcut=f + self.freq_band,
+                    fs=self.fs,
+                    order=self.order,
+                    filttype=self.filttype,
+                )
+            )
+        X_ext = np.concatenate(X_ext, axis=1)
+        covmats = covariances(X_ext, estimator=self.estimator)
+        return covmats
