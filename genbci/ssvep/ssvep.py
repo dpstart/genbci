@@ -42,6 +42,7 @@ class SSVEP(mne.Epochs):
         tfr_time_window=0.9,
     ):
 
+        self.epochs = epochs
         self.info = deepcopy(epochs.info)
 
         self.frequencies = freqs
@@ -277,3 +278,8 @@ class SSVEP(mne.Epochs):
     def __iter__(self):
         for i in range(len(self)):
             yield self.psd[i, ...]
+
+    def get_covariance(self, tmin=2.0, tmax=5.0) -> mne.Covariance:
+
+        # TODO remove tmin and tmax defaults
+        return mne.compute_covariance(self.epochs, tmin=tmin, tmax=tmax)

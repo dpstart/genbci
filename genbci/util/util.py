@@ -1,11 +1,18 @@
 # coding=utf-8
 from torch.autograd import Variable
 from torch.nn import Module
-import numpy as np
-import scipy.io as sio
 import torch
 import torch.nn as nn
+
+import numpy as np
+import scipy.io as sio
+from scipy.signal import filtfilt, butter
+import mne
+
 import random
+import gzip
+import pickle
+import os
 
 
 def weights_init(m):
@@ -113,6 +120,50 @@ def get_balanced_batches(n_trials, rng, shuffle, n_batches=None, batch_size=None
     return batches
 
 
+def get_exo_data(PATH: str, plot=False) -> mne.Epochs:
+
+    event_id = dict(resting=1, stim13=2, stim17=3, stim21=4)
+    tmin, tmax = 2.0, 5.0
+
+    full_path = os.path.join(PATH, "./subject12/record-[2014.03.10-19.47.49]")
+
+    raw = mne.io.read_raw_fif(str(full_path) + "_raw.fif", preload=True)
+    events = mne.read_events(str(full_path) + "-eve.fif")
+
+    picks = mne.pick_types(raw.info, meg=False, eeg=True, stim=False, eog=False)
+    raw.filter(6.0, 30.0, method="iir", picks=picks)
+
+    if plot is True:
+        raw.plot(
+            events=events,
+            event_color={1: "red", 2: "blue", 3: "green", 4: "cyan"},
+            duration=6,
+            n_channels=8,
+            color={"eeg": "steelblue"},
+            scalings={"eeg": 2e-2},
+            show_options=False,
+            title="Raw EEG from S12",
+        )
+
+    epochs = mne.Epochs(
+        raw,
+        events,
+        event_id,
+        tmin,
+        tmax,
+        proj=True,
+        picks=picks,
+        baseline=None,
+        preload=True,
+        verbose=False,
+    )
+
+    if plot is True:
+        epochs.plot(title="SSVEP epochs", n_channels=8, n_epochs=4)
+
+    return epochs
+
+
 def get_data(subject, training, PATH):
     """	Loads the dataset 2a of the BCI Competition IV
     available on http://bnci-horizon-2020.eu/database/data-sets
@@ -214,3 +265,17 @@ def weight_filler(m):
     elif classname.find("BatchNorm") != -1 or classname.find("LayerNorm") != -1:
         m.weight.data.normal_(1.0, 0.02)
         m.bias.data.fill_(0.0)
+
+
+def butter_bandpass(signal, lowcut, highcut, fs, order=4, filttype="forward-backward"):
+    nyq = 0.5 * fs
+    low = lowcut / nyq
+    high = highcut / nyq
+    b, a = butter(order, [low, high], btype="band")
+    if filttype == "forward":
+        filtered = lfilter(b, a, signal, axis=-1)
+    elif filttype == "forward-backward":
+        filtered = filtfilt(b, a, signal, axis=-1)
+    else:
+        raise ValueError("Unknown filttype:", filttype)
+    return filtered

@@ -224,7 +224,6 @@ discriminator.apply(weights_init)
 discriminator.train_init()
 discriminator.to(opt.device)
 
-
 generator = Generator(opt.nz)
 generator.apply(weights_init)
 generator.train_init()
