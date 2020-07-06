@@ -13,6 +13,7 @@ __pycache__/
 models/
 genbci/ssvep/data/dataset-ssvep-exoskeleton/
 #data/
+*.mat
 
 .vscode
 

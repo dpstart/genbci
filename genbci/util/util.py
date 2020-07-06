@@ -279,3 +279,38 @@ def butter_bandpass(signal, lowcut, highcut, fs, order=4, filttype="forward-back
     else:
         raise ValueError("Unknown filttype:", filttype)
     return filtered
+
+
+def mne_epochs_from_simbci(path: str):
+
+    mat_contents = sio.loadmat(path)
+    mat_contents = mat_contents["dataset"]
+
+    X = mat_contents["X"][0][0]
+    Fs = mat_contents["samplingFreq"][0][0][0][0]
+    freqs = mat_contents["freqs"][0][0][0]
+
+    # Events in the form name, latency, duration
+    events = []
+    for elem in mat_contents["events"][0][0][0]:
+        events.append([elem[0][0], elem[1][0][0], elem[2][0][0]])
+
+    # TODO no hardcoding
+    events_id = {"Freq1": 1, "Freq2": 2, "Freq3": 3}
+    filtered = list(
+        filter(lambda x: x[0] == "Freq1" or x[0] == "Freq2" or x[0] == "Freq3", events)
+    )
+
+    events_mne = [[x[1], 0, events_id[x[0]]] for x in filtered]
+
+    ch_names = ["ch" + str(i) for i in range(X.shape[1])]
+    ch_types = ["eeg"] * X.shape[1]
+    info = mne.create_info(ch_names=ch_names, sfreq=Fs, ch_types=ch_types)
+
+    trials = 18
+    X = X[2000:, :]
+
+    X = np.reshape(X, (trials, -1, X.shape[1]))  # epochs, samples, channels
+    X = np.transpose(X, (0, 2, 1))  # epochsxchannelsxsamples
+
+    return mne.EpochsArray(X, info=info, events=events_mne, event_id=events_id)
