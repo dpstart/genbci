@@ -17,6 +17,8 @@ from genbci.generate.model import (
 from genbci.scripts import ssvep_sample
 from genbci.util import init_torch_and_get_device, weights_init
 
+torch.set_num_threads(8)
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -81,7 +83,6 @@ opt.dropout_level = 0.05
 # opt.img_shape = (9, 1500)
 opt.plot_steps = 50
 
-
 opt.jobid = 1
 
 opt.modelname = "ssvep_wgan%s"
@@ -143,6 +144,7 @@ def eval_fn(dataloader, generator, discriminator, epoch, opt, losses_d, losses_g
     discriminator.eval()
 
     if epoch % opt.plot_steps == 0:
+
         freqs_tmp = np.fft.rfftfreq(ssvep_sample.data_train.shape[2], d=1 / 250.0)
 
         # Compute FFT frequencies
