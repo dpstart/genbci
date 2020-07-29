@@ -128,6 +128,13 @@ def get_exo_data(PATH: str, plot=False) -> mne.Epochs:
     files = [
         "./subject12/record-[2014.03.10-19.47.49]",
         "./subject01/record-[2012.07.06-19.02.16]",
+        "./subject01/record-[2012.07.06-19.06.14]",
+        "./subject02/record-[2012.07.19-17.36.23]",
+        "./subject02/record-[2012.07.19-17.41.14]",
+        "./subject03/record-[2012.07.11-15.25.23]",
+        "./subject03/record-[2012.07.11-15.33.08]",
+        "./subject04/record-[2012.07.18-17.52.30]",
+        "./subject04/record-[2012.07.18-17.56.53]",
     ]
 
     all_epochs = None
