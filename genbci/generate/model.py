@@ -196,15 +196,15 @@ class SSVEP_Generator(WGAN_Generator):
             ),
             nn.PReLU(),
         )
+        # self.layer3 = nn.Sequential(
+        #     nn.ConvTranspose1d(
+        #         in_channels=16, out_channels=16, kernel_size=18, stride=2
+        #     ),
+        #     nn.PReLU(),
+        # )
         self.layer3 = nn.Sequential(
             nn.ConvTranspose1d(
-                in_channels=16, out_channels=16, kernel_size=18, stride=2
-            ),
-            nn.PReLU(),
-        )
-        self.layer4 = nn.Sequential(
-            nn.ConvTranspose1d(
-                in_channels=16, out_channels=2, kernel_size=16, stride=4
+                in_channels=16, out_channels=2, kernel_size=20, stride=4
             ),
             nn.Sigmoid(),
         )
@@ -214,7 +214,7 @@ class SSVEP_Generator(WGAN_Generator):
         out = out.view(out.size(0), 16, 40)
         out = self.layer2(out)
         out = self.layer3(out)
-        out = self.layer4(out)
+        # out = self.layer4(out)
         return out
 
 
@@ -228,7 +228,7 @@ class SSVEP_Discriminator(WGAN_Discriminator):
             nn.MaxPool1d(2),
         )
         self.dense_layers = nn.Sequential(
-            nn.Linear(5968, 600), nn.LeakyReLU(0.2), nn.Linear(600, 1)
+            nn.Linear(2880, 600), nn.LeakyReLU(0.2), nn.Linear(600, 1)
         )
 
     def forward(self, input):

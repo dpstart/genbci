@@ -15,7 +15,7 @@ from genbci.generate.model import (
     SSVEP_Generator as Generator,
 )
 from genbci.scripts import ssvep_sample
-from genbci.util import init_torch_and_get_device, weights_init
+from genbci.util import init_torch_and_get_device, weights_init, get_exo_data
 
 torch.set_num_threads(8)
 
@@ -94,12 +94,29 @@ dataloader = torch.utils.data.DataLoader(
 )
 
 
+epochs_exo = get_exo_data(
+    "/Users/daniele/Desktop/thesis/library/genbci/ssvep/data/dataset-ssvep-exoskeleton",
+    plot=False,
+)
+
+data = epochs_exo.get_data()
+labels = np.zeros(data.shape[0])
+
+datatrain = torch.from_numpy(data[:, :2, :728]).float()
+labels = torch.from_numpy(labels)
+dataset = torch.utils.data.TensorDataset(datatrain, labels)
+
+dataloader = torch.utils.data.DataLoader(
+    dataset=dataset, batch_size=opt.batch_size, shuffle=True
+)
+
+
 def train_fn(dataloader, generator, discriminator, opt):
 
     losses_d, losses_g = [], []
 
     for epoch in range(opt.n_epochs):
-        for i, (real_imgs, labels) in enumerate(dataloader):
+        for i, (real_imgs, _) in enumerate(dataloader):
 
             generator.train()
             discriminator.train()
@@ -145,10 +162,10 @@ def eval_fn(dataloader, generator, discriminator, epoch, opt, losses_d, losses_g
 
     if epoch % opt.plot_steps == 0:
 
-        freqs_tmp = np.fft.rfftfreq(ssvep_sample.data_train.shape[2], d=1 / 250.0)
+        freqs_tmp = np.fft.rfftfreq(dataset.tensors[0].shape[2], d=1 / 250.0)
 
         # Compute FFT frequencies
-        train_fft = np.fft.rfft(ssvep_sample.data_train, axis=2)
+        train_fft = np.fft.rfft(dataset.tensors[0], axis=2)
 
         # Compute FFT on training data
         train_amps = np.abs(train_fft).mean(axis=1).mean(axis=0)
