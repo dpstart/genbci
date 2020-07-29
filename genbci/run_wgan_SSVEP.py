@@ -102,7 +102,8 @@ epochs_exo = get_exo_data(
 data = epochs_exo.get_data()
 labels = np.zeros(data.shape[0])
 
-datatrain = torch.from_numpy(data[:, :2, :728]).float()
+# Electrodes 2 and 3 should be O1 and O2 thus occipital
+datatrain = torch.from_numpy(data[:, 1:3, :728]).float()
 labels = torch.from_numpy(labels)
 dataset = torch.utils.data.TensorDataset(datatrain, labels)
 

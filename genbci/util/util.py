@@ -125,43 +125,58 @@ def get_exo_data(PATH: str, plot=False) -> mne.Epochs:
     event_id = dict(resting=1, stim13=2, stim17=3, stim21=4)
     tmin, tmax = 2.0, 5.0
 
-    full_path = os.path.join(PATH, "./subject12/record-[2014.03.10-19.47.49]")
+    files = [
+        "./subject12/record-[2014.03.10-19.47.49]",
+        "./subject01/record-[2012.07.06-19.02.16]",
+    ]
 
-    raw = mne.io.read_raw_fif(str(full_path) + "_raw.fif", preload=True)
-    events = mne.read_events(str(full_path) + "-eve.fif")
+    all_epochs = None
 
-    picks = mne.pick_types(raw.info, meg=False, eeg=True, stim=False, eog=False)
-    raw.filter(6.0, 30.0, method="iir", picks=picks)
+    for file in files:
 
-    if plot is True:
-        raw.plot(
-            events=events,
-            event_color={1: "red", 2: "blue", 3: "green", 4: "cyan"},
-            duration=6,
-            n_channels=8,
-            color={"eeg": "steelblue"},
-            scalings={"eeg": 2e-2},
-            show_options=False,
-            title="Raw EEG from S12",
+        full_path = os.path.join(PATH, file)
+
+        raw = mne.io.read_raw_fif(str(full_path) + "_raw.fif", preload=True)
+        events = mne.read_events(str(full_path) + "-eve.fif")
+
+        picks = mne.pick_types(raw.info, meg=False, eeg=True, stim=False, eog=False)
+        raw.filter(6.0, 30.0, method="iir", picks=picks)
+
+        if plot is True:
+            raw.plot(
+                events=events,
+                event_color={1: "red", 2: "blue", 3: "green", 4: "cyan"},
+                duration=6,
+                n_channels=8,
+                color={"eeg": "steelblue"},
+                scalings={"eeg": 2e-2},
+                show_options=False,
+                title="Raw EEG from S12",
+            )
+
+        epochs = mne.Epochs(
+            raw,
+            events,
+            event_id,
+            tmin,
+            tmax,
+            proj=True,
+            picks=picks,
+            baseline=None,
+            preload=True,
+            verbose=False,
         )
 
-    epochs = mne.Epochs(
-        raw,
-        events,
-        event_id,
-        tmin,
-        tmax,
-        proj=True,
-        picks=picks,
-        baseline=None,
-        preload=True,
-        verbose=False,
-    )
+        if plot is True:
+            epochs.plot(title="SSVEP epochs", n_channels=8, n_epochs=4)
 
-    if plot is True:
-        epochs.plot(title="SSVEP epochs", n_channels=8, n_epochs=4)
+        all_epochs = (
+            epochs
+            if all_epochs is None
+            else mne.concatenate_epochs([all_epochs, epochs])
+        )
 
-    return epochs
+    return all_epochs
 
 
 def get_data(subject, training, PATH):
