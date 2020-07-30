@@ -89,9 +89,9 @@ opt.modelname = "ssvep_wgan%s"
 if not os.path.exists(opt.modelpath):
     os.makedirs(opt.modelpath)
 
-dataloader = torch.utils.data.DataLoader(
-    dataset=ssvep_sample.dataset, batch_size=opt.batch_size, shuffle=True
-)
+# dataloader = torch.utils.data.DataLoader(
+#     dataset=ssvep_sample.dataset, batch_size=opt.batch_size, shuffle=True
+# )
 
 
 epochs_exo = get_exo_data(
