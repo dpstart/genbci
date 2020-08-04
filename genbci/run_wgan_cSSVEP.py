@@ -101,7 +101,7 @@ epochs_exo = get_exo_data(
 )
 
 data = epochs_exo.get_data()
-labels = epochs_exo.events[:, 2]
+labels = epochs_exo.events[:, 2] - 1
 
 # Electrodes 2 and 3 should be O1 and O2 thus occipital
 datatrain = torch.from_numpy(data[:, 1:3, :728]).float()
