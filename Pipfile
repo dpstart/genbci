@@ -15,12 +15,11 @@ matlab = "*"
 matplotlib = ">=2.2"
 mne = ">=0.19"
 xarray = "*"
-pylsl = "*"
-torch = "==1.5.0"
+torch = "1.1.0"
 braindecode = "*"
 genbci = {editable = true, path = "."}
 pyriemann = "*"
-moabb = {path = "/Users/daniele/Desktop/moabb"}
+moabb = {path = "/home/paperspace//moabb"}
 scikit-learn = "*"
 seaborn = ">=0.9.0"
 h5py = "*"

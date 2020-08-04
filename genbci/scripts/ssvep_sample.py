@@ -2,6 +2,7 @@ import numpy as np
 from scipy import signal
 
 import torch
+import torch.utils.data
 
 # pre-processing definition
 def data_process(input_data):
@@ -45,16 +46,18 @@ def data_process(input_data):
 
 
 # data loading for training the generative model
+
+PATH = "/home/paperspace/eegsourcegen/genbci"
 # class0
 data_class0 = [
     np.load(
-        "/Users/daniele/Desktop/thesis/library/genbci/generate/data/ssvep/sampledata_class0.npy"
+        f"{PATH}/generate/data/ssvep/sampledata_class0.npy"
     )
 ]
 data_class0 = np.concatenate(data_class0)
 label_class0 = [
     np.load(
-        "/Users/daniele/Desktop/thesis/library/genbci/generate/data/ssvep/samplelabel_class0.npy"
+        f"{PATH}/generate/data/ssvep/samplelabel_class0.npy"
     )
 ]
 label_class0 = np.concatenate(label_class0)
@@ -64,13 +67,13 @@ data_class0 = data_process(data_class0)
 # class1
 data_class1 = [
     np.load(
-        "/Users/daniele/Desktop/thesis/library/genbci/generate/data/ssvep/sampledata_class1.npy"
+        f"{PATH}/generate/data/ssvep/sampledata_class1.npy"
     )
 ]
 data_class1 = np.concatenate(data_class1)
 label_class1 = [
     np.load(
-        "/Users/daniele/Desktop/thesis/library/genbci/generate/data/ssvep/samplelabel_class1.npy"
+        f"{PATH}/generate/data/ssvep/samplelabel_class1.npy"
     )
 ]
 label_class1 = np.concatenate(label_class1)
@@ -80,13 +83,13 @@ data_class1 = data_process(data_class1)
 # class2
 data_class2 = [
     np.load(
-        "/Users/daniele/Desktop/thesis/library/genbci/generate/data/ssvep/sampledata_class2.npy"
+        f"{PATH}/generate/data/ssvep/sampledata_class2.npy"
     )
 ]
 data_class2 = np.concatenate(data_class2)
 label_class2 = [
     np.load(
-        "/Users/daniele/Desktop/thesis/library/genbci/generate/data/ssvep/samplelabel_class2.npy"
+        f"{PATH}/generate/data/ssvep/samplelabel_class2.npy"
     )
 ]
 label_class2 = np.concatenate(label_class2)

@@ -185,7 +185,7 @@ setup(
         "sphinxcontrib-serializinghtml==1.1.4; python_version >= '3.5'",
         "tabulate==0.8.7",
         "threadpoolctl==2.1.0; python_version >= '3.5'",
-        "torch==1.5.0",
+        "torch==1.1.0",
         "tqdm==4.46.1; python_version >= '2.6' and python_version not in '3.0, 3.1, 3.2, 3.3'",
         "urllib3==1.25.9; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4' and python_version < '4'",
         "xarray==0.15.1",

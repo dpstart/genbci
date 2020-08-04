@@ -25,7 +25,7 @@ parser.add_argument(
     "--modelpath", type=str, default="models/", help="Path to dave model"
 )
 parser.add_argument(
-    "--n_epochs", type=int, default=1200, help="number of epochs of training"
+    "--n_epochs", type=int, default=5000, help="number of epochs of training"
 )
 parser.add_argument("--lr", type=float, default=0.0001, help="adam: learning rate")
 parser.add_argument(
@@ -81,7 +81,7 @@ opt.device = init_torch_and_get_device()
 opt.batch_size = 16
 opt.dropout_level = 0.05
 # opt.img_shape = (9, 1500)
-opt.plot_steps = 50
+opt.plot_steps = 250
 
 opt.jobid = 1
 
