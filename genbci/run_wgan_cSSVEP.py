@@ -6,6 +6,7 @@ import os
 import matplotlib.pyplot as plt
 
 import torch.nn as nn
+import torch.utils.data
 import torch.nn.functional as F
 import torch.autograd as autograd
 import torch
@@ -82,7 +83,7 @@ opt.device = init_torch_and_get_device()
 opt.batch_size = 16
 opt.dropout_level = 0.05
 # opt.img_shape = (9, 1500)
-opt.plot_steps = 250
+opt.plot_steps = 50
 
 opt.jobid = 2
 
@@ -96,12 +97,12 @@ if not os.path.exists(opt.modelpath):
 
 
 epochs_exo = get_exo_data(
-    "/Users/daniele/Desktop/thesis/library/genbci/ssvep/data/dataset-ssvep-exoskeleton",
+    "/home/paperspace/eegsourcegen/genbci/ssvep/data/dataset-ssvep-exoskeleton",
     plot=False,
 )
 
 data = epochs_exo.get_data()
-labels = epochs_exo.events[:, 2]
+labels = epochs_exo.events[:, 2]-1
 
 # Electrodes 2 and 3 should be O1 and O2 thus occipital
 datatrain = torch.from_numpy(data[:, 1:3, :728]).float()
