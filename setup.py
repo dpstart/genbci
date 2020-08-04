@@ -160,7 +160,7 @@ setup(
         "pandas==1.0.4",
         "pillow==7.1.2",
         "pygments==2.6.1; python_version >= '3.5'",
-        "pylsl==1.13.1",
+        "pylsl==1.13.6",
         "pyparsing==2.4.7; python_version >= '2.6' and python_version not in '3.0, 3.1, 3.2, 3.3'",
         "pyriemann==0.2.6",
         "python-dateutil==2.8.1; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'",

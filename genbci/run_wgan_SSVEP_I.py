@@ -135,7 +135,7 @@ def train_fn(dataloader, generator, discriminator, opt):
             fake_imgs = generator(z)
 
             # Let the discriminator judge and learn
-            loss_real_d, loss_fake_d = discriminator.train_batch(real_imgs, fake_imgs)
+            (loss_real_d, loss_fake_d, _, _, _) = discriminator.train_batch(real_imgs, fake_imgs)
             loss_d = loss_real_d + loss_fake_d
             losses_d.append(loss_d)
 

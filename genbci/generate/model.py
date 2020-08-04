@@ -185,7 +185,7 @@ class Discriminator(WGAN_I_Discriminator):
         return self.model(input)
 
 
-class SSVEP_Generator(WGAN_Generator):
+class SSVEP_Generator(WGAN_I_Generator):
     def __init__(self, nz):
         super(SSVEP_Generator, self).__init__()
         self.nz = nz
@@ -218,7 +218,7 @@ class SSVEP_Generator(WGAN_Generator):
         return out
 
 
-class SSVEP_Discriminator(WGAN_Discriminator):
+class SSVEP_Discriminator(WGAN_I_Discriminator):
     def __init__(self):
         super(SSVEP_Discriminator, self).__init__()
         self.layer1 = nn.Sequential(
@@ -233,6 +233,66 @@ class SSVEP_Discriminator(WGAN_Discriminator):
 
     def forward(self, input):
         out = self.layer1(input)
+        out = out.view(out.size(0), -1)
+        out = self.dense_layers(out)
+        return out
+
+class SSVEP_CGenerator(WGAN_I_Generator):
+    def __init__(self, nz, nclasses):
+        super(SSVEP_Generator, self).__init__()
+
+        self.label_emb = nn.Embedding(nclasses, nclasses)
+        self.nz = nz
+        self.layer1 = nn.Sequential(nn.Linear(self.nz, 640), nn.PReLU())
+        self.layer2 = nn.Sequential(
+            nn.ConvTranspose1d(
+                in_channels=16, out_channels=16, kernel_size=22, stride=4
+            ),
+            nn.PReLU(),
+        )
+        # self.layer3 = nn.Sequential(
+        #     nn.ConvTranspose1d(
+        #         in_channels=16, out_channels=16, kernel_size=18, stride=2
+        #     ),
+        #     nn.PReLU(),
+        # )
+        self.layer3 = nn.Sequential(
+            nn.ConvTranspose1d(
+                in_channels=16, out_channels=2, kernel_size=20, stride=4
+            ),
+            nn.Sigmoid(),
+        )
+
+    def forward(self, input, labels):
+
+        gen_input = torch.cat((self.label_emb(labels), input),-1)
+        out = self.layer1(gen_input)
+        out = out.view(out.size(0), 16, 40)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        # out = self.layer4(out)
+        return out
+
+
+class SSVEP_CDiscriminator(WGAN_I_Discriminator):
+    def __init__(self, nclasses):
+        super(SSVEP_Discriminator, self).__init__()
+
+        self.label_emb = nn.Embedding(nclasses, nclasses)
+        self.layer1 = nn.Sequential(
+            nn.Conv1d(in_channels=2, out_channels=16, kernel_size=10, stride=2),
+            nn.BatchNorm1d(num_features=16),
+            nn.LeakyReLU(0.2),
+            nn.MaxPool1d(2),
+        )
+        self.dense_layers = nn.Sequential(
+            nn.Linear(2880, 600), nn.LeakyReLU(0.2), nn.Linear(600, 1)
+        )
+
+    def forward(self, input):
+
+        disc_input = torch.cat((input.view(img.size(0),-1), self.label_emb(labels)),-1)
+        out = self.layer1(disc_input)
         out = out.view(out.size(0), -1)
         out = self.dense_layers(out)
         return out
