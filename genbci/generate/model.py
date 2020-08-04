@@ -1,5 +1,6 @@
 # coding=utf-8
 from torch import nn
+import torch
 from genbci.generate.layers.reshape import Reshape, PixelShuffle2d
 from genbci.generate.layers.normalization import PixelNorm
 from genbci.generate.layers.weight_scaling import weight_scale
@@ -13,6 +14,7 @@ from genbci.generate.progressive import (
 )
 from genbci.generate.wgan import WGAN_I_Generator, WGAN_I_Discriminator
 from genbci.generate.wgan import WGAN_Generator, WGAN_Discriminator
+from genbci.generate.wgan import WGAN_I_CDiscriminator, WGAN_I_CGenerator
 from torch.nn.init import calculate_gain
 
 
@@ -237,13 +239,14 @@ class SSVEP_Discriminator(WGAN_I_Discriminator):
         out = self.dense_layers(out)
         return out
 
-class SSVEP_CGenerator(WGAN_I_Generator):
+
+class SSVEP_CGenerator(WGAN_I_CGenerator):
     def __init__(self, nz, nclasses):
-        super(SSVEP_Generator, self).__init__()
+        super(SSVEP_CGenerator, self).__init__()
 
         self.label_emb = nn.Embedding(nclasses, nclasses)
         self.nz = nz
-        self.layer1 = nn.Sequential(nn.Linear(self.nz, 640), nn.PReLU())
+        self.layer1 = nn.Sequential(nn.Linear(self.nz + nclasses, 640), nn.PReLU())
         self.layer2 = nn.Sequential(
             nn.ConvTranspose1d(
                 in_channels=16, out_channels=16, kernel_size=22, stride=4
@@ -265,7 +268,7 @@ class SSVEP_CGenerator(WGAN_I_Generator):
 
     def forward(self, input, labels):
 
-        gen_input = torch.cat((self.label_emb(labels), input),-1)
+        gen_input = torch.cat((self.label_emb(labels), input), -1)
         out = self.layer1(gen_input)
         out = out.view(out.size(0), 16, 40)
         out = self.layer2(out)
@@ -274,25 +277,28 @@ class SSVEP_CGenerator(WGAN_I_Generator):
         return out
 
 
-class SSVEP_CDiscriminator(WGAN_I_Discriminator):
+class SSVEP_CDiscriminator(WGAN_I_CDiscriminator):
     def __init__(self, nclasses):
-        super(SSVEP_Discriminator, self).__init__()
+        super(SSVEP_CDiscriminator, self).__init__()
 
-        self.label_emb = nn.Embedding(nclasses, nclasses)
         self.layer1 = nn.Sequential(
             nn.Conv1d(in_channels=2, out_channels=16, kernel_size=10, stride=2),
             nn.BatchNorm1d(num_features=16),
             nn.LeakyReLU(0.2),
             nn.MaxPool1d(2),
         )
+
+        self.fc_labels = nn.Sequential(nn.Linear(1, 1000), nn.LeakyReLU(0.2))
         self.dense_layers = nn.Sequential(
-            nn.Linear(2880, 600), nn.LeakyReLU(0.2), nn.Linear(600, 1)
+            nn.Linear(2880 + 1000, 600), nn.LeakyReLU(0.2), nn.Linear(600, 1)
         )
 
-    def forward(self, input):
-
-        disc_input = torch.cat((input.view(img.size(0),-1), self.label_emb(labels)),-1)
-        out = self.layer1(disc_input)
+    def forward(self, input, labels):
+        out = self.layer1(input)
         out = out.view(out.size(0), -1)
+
+        out_labels = self.fc_labels(labels.float().unsqueeze(-1))
+
+        out = torch.cat([out, out_labels], -1)
         out = self.dense_layers(out)
         return out
