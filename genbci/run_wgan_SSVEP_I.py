@@ -17,7 +17,7 @@ from genbci.generate.model import (
 from genbci.scripts import ssvep_sample
 from genbci.util import init_torch_and_get_device, weights_init, get_exo_data
 
-torch.set_num_threads(8)
+
 
 
 parser = argparse.ArgumentParser()
@@ -99,8 +99,12 @@ epochs_exo = get_exo_data(
     plot=False,
 )
 
+
 data = epochs_exo.get_data()
-labels = np.zeros(data.shape[0])
+labels = epochs_exo.events[:, 2]-1
+
+data = data[labels==1,:,:]
+labels = labels[labels==1]
 
 # Electrodes 2 and 3 should be O1 and O2 thus occipital
 datatrain = torch.from_numpy(data[:, 1:3, :728]).float()
@@ -108,7 +112,7 @@ labels = torch.from_numpy(labels)
 dataset = torch.utils.data.TensorDataset(datatrain, labels)
 
 dataloader = torch.utils.data.DataLoader(
-    dataset=dataset, batch_size=opt.batch_size, shuffle=True
+    dataset=dataset, batch_size=opt.batch_size, shuffle=True, drop_last=True
 )
 
 
