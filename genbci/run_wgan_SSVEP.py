@@ -100,7 +100,10 @@ epochs_exo = get_exo_data(
 )
 
 data = epochs_exo.get_data()
-labels = np.zeros(data.shape[0])
+labels = epochs_exo.events[:, 2]-1
+
+data = data[labels==1,:,:]
+labels = labels[labels==1]
 
 # Electrodes 2 and 3 should be O1 and O2 thus occipital
 datatrain = torch.from_numpy(data[:, 1:3, :728]).float()
@@ -198,7 +201,7 @@ def eval_fn(dataloader, generator, discriminator, epoch, opt, losses_d, losses_g
         for i in range(10):
             plt.subplot(10, 1, i + 1)
 
-            # Working with 2 channels, plot only firt one. A bit ugly.
+            # Working with 2 channels, plot only first one. A bit ugly.
             plt.plot(batch_fake[i, 0, ...].squeeze())
             plt.xticks((), ())
             plt.yticks((), ())

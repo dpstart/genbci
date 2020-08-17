@@ -187,7 +187,7 @@ class Discriminator(WGAN_I_Discriminator):
         return self.model(input)
 
 
-class SSVEP_Generator(WGAN_I_Generator):
+class SSVEP_Generator(WGAN_Generator):
     def __init__(self, nz):
         super(SSVEP_Generator, self).__init__()
         self.nz = nz
@@ -222,7 +222,7 @@ class SSVEP_Generator(WGAN_I_Generator):
         return out
 
 
-class SSVEP_Discriminator(WGAN_I_Discriminator):
+class SSVEP_Discriminator(WGAN_Discriminator):
     def __init__(self):
         super(SSVEP_Discriminator, self).__init__()
         self.layer1 = nn.Sequential(
@@ -232,7 +232,7 @@ class SSVEP_Discriminator(WGAN_I_Discriminator):
             nn.MaxPool1d(2),
         )
         self.dense_layers = nn.Sequential(
-            nn.Linear(2880, 600), nn.LeakyReLU(0.2), nn.Linear(600, 1)
+            nn.Linear(2880, 600), nn.LeakyReLU(0.2), nn.Linear(600, 256), nn.LeakyReLU(0.2), nn.Linear(256, 1)
         )
 
     def forward(self, input):
