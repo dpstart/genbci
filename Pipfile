@@ -19,7 +19,6 @@ torch = "1.1.0"
 braindecode = "*"
 genbci = {editable = true, path = "."}
 pyriemann = "*"
-moabb = {path = "/home/paperspace//moabb"}
 scikit-learn = "*"
 seaborn = ">=0.9.0"
 h5py = "*"

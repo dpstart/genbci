@@ -14,7 +14,8 @@ from genbci.generate.model import (
     SSVEP_Discriminator as Discriminator,
     SSVEP_Generator as Generator,
 )
-from genbci.scripts import ssvep_sample
+
+# from genbci.scripts import ssvep_sample
 from genbci.util import init_torch_and_get_device, weights_init, get_exo_data
 
 torch.set_num_threads(8)
@@ -95,15 +96,15 @@ if not os.path.exists(opt.modelpath):
 
 
 epochs_exo = get_exo_data(
-    "/home/paperspace/eegsourcegen/genbci/ssvep/data/dataset-ssvep-exoskeleton",
+    "/Users/daniele/Desktop/thesis/library/genbci/ssvep/data/dataset-ssvep-exoskeleton",
     plot=False,
 )
 
 data = epochs_exo.get_data()
-labels = epochs_exo.events[:, 2]-1
+labels = epochs_exo.events[:, 2] - 1
 
-data = data[labels==1,:,:]
-labels = labels[labels==1]
+data = data[labels == 1, :, :]
+labels = labels[labels == 1]
 
 # Electrodes 2 and 3 should be O1 and O2 thus occipital
 datatrain = torch.from_numpy(data[:, 1:3, :728]).float()

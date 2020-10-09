@@ -3,6 +3,9 @@ import numpy as np
 import random
 import os
 
+from genbci.util import *
+
+
 import matplotlib.pyplot as plt
 
 import torch.nn as nn
@@ -11,18 +14,17 @@ import torch.autograd as autograd
 import torch
 
 from genbci.generate.model import (
-    SSVEP_Discriminator as Discriminator,
-    SSVEP_Generator as Generator,
+    SSVEP_Discriminator_I as Discriminator,
+    SSVEP_Generator_I as Generator,
 )
-from genbci.scripts import ssvep_sample
+
+# from genbci.scripts import ssvep_sample
 from genbci.util import init_torch_and_get_device, weights_init, get_exo_data
-
-
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "--modelpath", type=str, default="models/", help="Path to dave model"
+    "--modelpath", type=str, default="models2/", help="Path to dave model"
 )
 parser.add_argument(
     "--n_epochs", type=int, default=5000, help="number of epochs of training"
@@ -80,7 +82,6 @@ opt.device = init_torch_and_get_device()
 ### Setting some defaults
 opt.batch_size = 16
 opt.dropout_level = 0.05
-# opt.img_shape = (9, 1500)
 opt.plot_steps = 250
 
 opt.jobid = 2
@@ -89,25 +90,47 @@ opt.modelname = "ssvep_wgan%s"
 if not os.path.exists(opt.modelpath):
     os.makedirs(opt.modelpath)
 
-# dataloader = torch.utils.data.DataLoader(
-#     dataset=ssvep_sample.dataset, batch_size=opt.batch_size, shuffle=True
+
+# epochs_exo = get_exo_data(
+#     "/Users/daniele/Desktop/thesis/library/genbci/ssvep/data/dataset-ssvep-exoskeleton",
+#     plot=False,
 # )
 
 
-epochs_exo = get_exo_data(
-    "/home/paperspace/eegsourcegen/genbci/ssvep/data/dataset-ssvep-exoskeleton",
-    plot=False,
-)
+# data = epochs_exo.get_data()
+# labels = epochs_exo.events[:, 2] - 1
 
+# data = data[labels == 1, :, :]
+# labels = labels[labels == 1]
 
-data = epochs_exo.get_data()
-labels = epochs_exo.events[:, 2]-1
+train, target = None, None
+for i in range(1, 10):
+    train_tmp, target_tmp = get_comp_data(i, True, os.path.join(os.getcwd(), "comp/"))
 
-data = data[labels==1,:,:]
-labels = labels[labels==1]
+    if train is None:
+        train = train_tmp[:, 7:9, :]
+        target = target_tmp
+    else:
+        train = np.concatenate((train, train_tmp[:, 7:9, :]))
+        target = np.concatenate((target, target_tmp))
+
+train = train[:, :, :]
+train = train - train.mean()
+train = train / train.std()
+train = train / np.abs(train).max()
+target_onehot = np.zeros((target.shape[0], 4))
+target_onehot[:, target.astype(int) - 1] = 1
+
+# print(train.shape)
+# import sys
+
+# sys.exit(1)
+
+data = train
+labels = target.astype(int)
 
 # Electrodes 2 and 3 should be O1 and O2 thus occipital
-datatrain = torch.from_numpy(data[:, 1:3, :728]).float()
+datatrain = torch.from_numpy(data[:, :, :728]).float()
 labels = torch.from_numpy(labels)
 dataset = torch.utils.data.TensorDataset(datatrain, labels)
 
@@ -139,7 +162,9 @@ def train_fn(dataloader, generator, discriminator, opt):
             fake_imgs = generator(z)
 
             # Let the discriminator judge and learn
-            (loss_real_d, loss_fake_d, _, _, _) = discriminator.train_batch(real_imgs, fake_imgs)
+            (loss_real_d, loss_fake_d, _, _, _) = discriminator.train_batch(
+                real_imgs, fake_imgs
+            )
             loss_d = loss_real_d + loss_fake_d
             losses_d.append(loss_d)
 

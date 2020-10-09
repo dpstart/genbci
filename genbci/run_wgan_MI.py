@@ -47,7 +47,7 @@ print(os.path.abspath(__file__))
 
 train, target = None, None
 for i in range(1, 10):
-    train_tmp, target_tmp = get_data(i, True, os.path.join(os.getcwd(), "../data/"))
+    train_tmp, target_tmp = get_comp_data(i, True, os.path.join(os.getcwd(), "comp/"))
 
     if train is None:
         train = train_tmp[:, 7:8, :]
